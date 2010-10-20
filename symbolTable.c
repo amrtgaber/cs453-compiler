@@ -26,7 +26,7 @@ Symbol *insert(char *identifier, Type type, Value value) {
 	Symbol *toInsert = null;
 	SymbolTable currTable = _stackTop->top;
 	
-	if(!(toInsert = malloc(sizeof(Symbol))))
+	if (!(toInsert = malloc(sizeof(Symbol))))
 		ERROR(NULL, __LINE__, TRUE); 				// out of memory
 	
 	toInsert->identifier = strdup(identifier);
@@ -38,3 +38,26 @@ Symbol *insert(char *identifier, Type type, Value value) {
 	
 	return toInsert;
 }
+
+SymbolTable *pushSymbolTable() {
+	if (!_stackTop) {
+		if (!(_stackTop = malloc(sizeof(StackTop))))
+			ERROR(NULL, __LINE__, TRUE);
+		
+		_stackTop->top = NULL;
+	}
+	
+	SymbolTable *newTable = NULL;
+	
+	if (!(newTable = malloc(sizeof(SymbolTable))))
+		ERROR(NULL, __LINE__, TRUE);				// out of memory
+		
+	newTable->next = _stackTop->top;
+	_stackTop->top = newTable;
+	
+}
+
+
+
+
+
