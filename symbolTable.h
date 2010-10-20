@@ -1,11 +1,18 @@
 /* File: symbalTable.h 
  * Author: Amr Gaber
  * Created: 19/10/2010
+ * Last Modified: 20/10/2010
  * Purpose: Header file for symbolTable.c.
  */
 
 #ifndef __SYMBOLTABLE_H__
 #define __SYMBOLTABLE_H__
+
+/************************
+ *						*
+ * 	type definitions	* 
+ *						*
+ ************************/
 
 typedef enum Type {
 	INT = 0xDEADBEEF,
@@ -37,8 +44,11 @@ typedef struct StackTop {
 	SymbolTable		*top;
 } StackTop;
 
-#define FALSE	0
-#define TRUE	1
+/************************
+ *						*
+ * 	exported functions	* 
+ *						*
+ ************************/
 
 Symbol *recall(char *identifier);
 Symbol *insert(char *identifier, Type type, Value value);

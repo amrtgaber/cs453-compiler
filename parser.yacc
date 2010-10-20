@@ -1,12 +1,14 @@
 /* File: parser.yacc 
  * Author: Amr Gaber
  * Created: 24/9/2010
+ * Last Modified: 20/10/2010
  * Purpose: Parser for the C-- compiler. Used with scanner.lex and makefile to
  * 				construct the C-- compiler.
  */
 
 %{
-#include <stdio.h>
+#include "symbolTable.h"
+#include "utilities.h"
 extern int yylineno;
 extern char* yytext;
 int errorCount = 0;

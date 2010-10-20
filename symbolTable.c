@@ -1,11 +1,14 @@
 /* File: symbalTable.c 
  * Author: Amr Gaber
  * Created: 19/10/2010
+ * Last Modified: 20/10/2010
  * Purpose: Symbol table for use with the C-- compiler.
  */
 
 #include "symbolTable.h"
+#include "utilities.h"
 
+extern _errorMessage[ERROR_MSG_SIZE];
 StackTop _stackTop = NULL;
 
 Symbol *recall(char *identifier) {
@@ -23,8 +26,8 @@ Symbol *insert(char *identifier, Type type, Value value) {
 	Symbol *toInsert = null;
 	SymbolTable currTable = _stackTop->top;
 	
-	// Remember to check for out of memory error
-	toInsert = malloc(sizeof(Symbol));
+	if(!(toInsert = malloc(sizeof(Symbol))))
+		ERROR(NULL, __LINE__, TRUE); 				// out of memory
 	
 	toInsert->identifier = strdup(identifier);
 	toInsert->type = type;
