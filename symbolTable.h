@@ -37,12 +37,8 @@ typedef struct Symbol {
 
 typedef struct SymbolTable {
 	Symbol			*head;
-	SymbolTable	 	*next;
+	SymbolTable	 	*below;
 } SymbolTable;
-
-typedef struct StackTop {
-	SymbolTable		*top;
-} StackTop;
 
 /************************
  *						*
@@ -53,7 +49,7 @@ typedef struct StackTop {
 Symbol *recall(char *identifier);
 Symbol *insert(char *identifier, Type type, Value value);
 
-SymbolTable *pushSymbolTable();
-void *popSymbolTable();
+void pushSymbolTable();
+void popSymbolTable();
 
 #endif
