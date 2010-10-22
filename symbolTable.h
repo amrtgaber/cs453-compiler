@@ -1,7 +1,7 @@
 /* File: symbalTable.h 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 20/10/2010
+ * Last Modified: 21/10/2010
  * Purpose: Header file for symbolTable.c.
  */
 
@@ -14,13 +14,29 @@
  *						*
  ************************/
 
+/* Enum: Type
+ * Description: Enumerates the different acceptable types in C--.
+ */
 typedef enum Type {
 	INT = 0xDEADBEEF,
 	CHAR,
 	INTARRAY,
-	CHARARRAY
+	CHARARRAY,
+	VOID
 } Type;
 
+/* Enum: FunctionType
+ * Description: Enumerates the different types of functions.
+ */
+typedef enum FunctionType {
+	EXTERN = 0xEA7FECE5,
+	PROTOTYPE,
+	DEFINITION,
+} FunctionType;
+
+/* Union: Value
+ * Description: Each symbol must have exactly one of these values.
+ */
 typedef union Value {
 	int		intVal;
 	char 	charVal;
@@ -28,15 +44,31 @@ typedef union Value {
 	char 	*string;
 } Value;
 
+/* Struct: Parameter
+ * Description: Node for parameter list
+ */
+typedef struct Parameter {
+	Type type;
+	Parameter *next;
+}Parameter;
+
+/* Struct: Symbol
+ * Description: Represents a symbol in the symbol table.
+ */
 typedef struct Symbol {
 	char	*identifier;
-	Type 	type;
-	Symbol 	*next;
+	Type 	type;				// also stands as the return type for functions
 	Value 	value;
+	FunctionType functionType;
+	Parameter *parameterListHead;
+	Symbol 	*next;
 } Symbol;
 
+/* Struct: SymbolTable
+ * Description: The head node of the symbol table.
+ */
 typedef struct SymbolTable {
-	Symbol			*head;
+	Symbol			*listHead;
 	SymbolTable	 	*below;
 } SymbolTable;
 
@@ -46,10 +78,52 @@ typedef struct SymbolTable {
  *						*
  ************************/
 
+/* Function: recall
+ * Parameters: char *identifier
+ * Description: Recalls a symbol from the symbol table.
+ * Returns: A pointer to the symbol if found, NULL otherwise.
+ * Preconditions: The stack must not be empty.
+ */
 Symbol *recall(char *identifier);
+
+/* Function: recallLocal
+ * Parameters: char *identifier
+ * Description: Recalls a symbol from the symbol table on top of the stack.
+ * Returns: A pointer to the symbol if found, NULL otherwise.
+ * Preconditions: The stack must not be empty.
+ */
+Symbol *recallLocal(char *identifier);
+
+/* Function: insert
+ * Parameters: char *identifier, Type type, Value value
+ * Description: Inserts a symbol into the symbol table.
+ * Returns: A pointer to the inserted symbol.
+ * Preconditions: The stack must not be empty.
+ */
 Symbol *insert(char *identifier, Type type, Value value);
 
+/* Function: addParameter
+ * Parameters: Type type
+ * Description: Adds a parameter to the most recently inserted function.
+ * Returns: void
+ * Preconditions: The most recently inserted symbol must have been a function.
+ */
+void addParameter(Type type);
+
+/* Function: pushSymbolTable
+ * Parameters: void
+ * Description: Pushes a new symbol table onto the stack.
+ * Returns: void
+ * Preconditions: none
+ */
 void pushSymbolTable();
+
+/* Function: popSymbolTable
+ * Parameters: void
+ * Description: Pops the symbol table on the top of the stack.
+ * Returns: void
+ * Preconditions: The stack must not be empty.
+ */
 void popSymbolTable();
 
 #endif
