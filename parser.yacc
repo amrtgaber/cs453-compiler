@@ -21,9 +21,12 @@ Parameter *_currParam = NULL;
 %union {
 	int integer;
 	char* string;
+	Type type;
 }
 
 %start program
+
+%type <type> expr
 
 %token ID INTCON CHARCON STRCON CHAR INT VOID IF ELSE WHILE	FOR	RETURN EXTERN
 			UMINUS DBLEQ NOTEQ LTEQ GTEQ LOGICAND LOGICOR OTHER
@@ -49,17 +52,17 @@ program:	  program declaration ';'
 	    	;
 
 declaration:  type varDcl multiVarDcl
-			| storeExtern type storeID '(' insertFunc paramTypes ')' 
+			| storeExtern type storeFID '(' insertFunc paramTypes ')' 
 			      multiProtDcl makeProt
-			| type storeID '(' insertFunc paramTypes ')' multiProtDcl makeProt
-			| storeExtern storeVoid storeID '(' insertFunc paramTypes ')'
+			| type storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt
+			| storeExtern storeVoid storeFID '(' insertFunc paramTypes ')'
 			      multiProtDcl makeProt
-			| storeVoid storeID '(' insertFunc paramTypes ')' multiProtDcl makeProt
+			| storeVoid storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt
 			;
 			
-storeID:	  ID
+storeFID:	  ID
 			{
-			  _currFID = $1.string;
+			  _currFID = $1;
 			};
 
 storeExtern:  EXTERN
@@ -73,9 +76,9 @@ storeVoid:	  VOID
 			};
 
 makeProt:	{
-			  Symbol *prevDcl = recall(_currFID);
-				
-			  if (prevDcl->functionType == PROTOTYPE || prevDcl->functionType == EXTERN) {
+			  Symbol *prevDcl = recallGloabl(_currFID);
+	
+			  if (prevDcl->functionType == PROTOTYPE) {
 			      typeError(sprintf("Prototype %s previously declared",
 				      _currFID));
 			  } else {
@@ -84,6 +87,8 @@ makeProt:	{
 				  else
 				      prevDcl->functionType = PROTOTYPE;
 			  }
+			  
+			  popSymbolTable();
 			}
 			;
 
@@ -97,7 +102,7 @@ multiVarDcl:  multiVarDcl ',' varDcl
 
 varDcl:	  	  ID
 			{
-			  _currID = $1.string;
+			  _currID = $1;
 			
 			  if (recallLocal(_currID)) {
 			      typeError(sprintf("%s previously declared in this function",
@@ -108,12 +113,12 @@ varDcl:	  	  ID
 			}
 			| ID '[' INTCON ']'
 			{
-			  _currID = $1.string;
+			  _currID = $1;
 			
-			  if (currType == CHAR)
-				  currType = CHARARRAY);
+			  if (_currType == CHAR)
+				  _currType = CHAR_ARRAY;
 			  else
-			      currType = INTARRAY;
+			      _currType = INT_ARRAY;
 			
 			  if (recallLocal(_currId)) {
 			      typeError(sprintf("%s previously declared in this function",
@@ -135,15 +140,85 @@ type:		  CHAR
 			;
 
 initParam:	{
-			  _currParam = (recall(_currFID))->parameterListHead;
+			  _currParam = (recallGlobal(_currFID))->parameterListHead;
 			};
 
-paramTypes:   initParam VOID
+paramTypes:   initParam VOID 
+			{
+			  Symbol *currentFunction = recallGlobal(_currFID);
+			
+		      if (_currParam) {
+		 		  if (_currParam->type != VOID)
+				  	  typeError("Type mismatch: non-VOID parameter(s) expected");
+			  } else {
+				  addParameter(NULL, VOID, currentFunction);
+			  }
+
+			  _currParam = NULL;
+			}
 			| initParam arrayTypeOpt multiParam
-			;
+			{
+			  if (_currParam)
+				  typeError("Type mismatch: missing previously declared types");
+			  
+			  _currParam = NULL;
+			};
 
 arrayTypeOpt: type ID
+			{
+			  _currID = $2;
+			  Symbol *currentFunction = recallGlobal(_currFID);
+			
+			    if (recallLocal(_currID)) {
+			      typeError(sprintf("%s previously declared in this function",
+					      _currID));
+			    } else {
+			  	  	if (_currParam) {
+					  	if (_currParam->type != _currType) {
+						  	if (_currType == CHAR)
+							  	typeError("CHAR does not match previous declaration");
+						  	else
+							  	typeError("INT does not match previous declaration");
+						} else {
+							insert(_currID, _currType);
+						}
+			  	 	} else {
+				  		addParameter(_currID, _currType, currentFunction);
+			  		}
+				}
+						
+			  _currParam = _currParam->next;
+			}
 			| type ID '['']'
+			{
+			  _currID = $2;
+			  Symbol *currentFunction = recallGlobal(_currFID);
+			
+			  if (_currType == CHAR)
+				  _currType = CHAR_ARRAY;
+			  else
+			      _currType = INT_ARRAY;
+			
+			  if (recallLocal(_currID)) {
+			      typeError(sprintf("%s previously declared in this function",
+					      _currID));
+			  } else {
+			  	  if (_currParam) {
+					  if (_currParam->type != _currType) {
+						  if (_currType == CHAR_ARRAY)
+							  typeError("CHAR_ARRAY does not match previous declaration");
+						  else
+							  typeError("INT_ARRAY does not match previous declaration");
+					  } else {
+						  insert(_currID, _currType);
+					  }
+			  	  } else {
+				  	  addParameter(_currID, _currType, currentFunction);
+			  	  }
+			  }
+			
+			  _currParam = _currParam->next;
+			}
 			;
 
 multiParam:   multiParam ',' arrayTypeOpt
@@ -151,7 +226,7 @@ multiParam:   multiParam ',' arrayTypeOpt
 			;
 
 insertFunc:	{
-			  Symbol *prevDcl = recall(_currID);
+			  Symbol *prevDcl = recallGlobal(_currFID);
 
 			  if (prevDcl) {
 			      if (prevDcl->functionType == DEFINITION) {
@@ -165,14 +240,23 @@ insertFunc:	{
 						  prevDcl->identifier));
 				  }
 			  } else {
-				      insert(_currID, _currType);
+				      Symbol *currFunction = insert(_currID, _currType);
+					  currFunction->functionType = DEFINITION;
 			  }
+			
+			  pushSymbolTable();
 			}
 			;
 
-function:	  type ID '(' paramTypes ')' '{' multiTypeDcl statementOpt '}'
-			| VOID ID '(' paramTypes ')' '{' multiTypeDcl statementOpt '}'
+function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
+			      statementOpt '}' popTable
+			| storeVOID storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
+				  statementOpt '}' popTable
 			;
+
+popTable:	{
+			  popSymbolTable();
+			};
 
 multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
 
@@ -211,29 +295,151 @@ assgOpt:	  assignment
 			;
 
 expr:		  '-' expr %prec UMINUS
+			{
+			  if ($2 != INT && $2 != CHAR)
+				  typeError("incompatible expression for operator '-'");
+			
+			  $$ = $2;
+			}
 			| '!' expr
+			{
+			  if ($2 != BOOLEAN)
+				  typeError("incompatible expression for operator '!'");
+			
+			  $$ = $2;
+			}
 			| expr '+' expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '+'");
+			
+			  $$ = $1;
+			}
 			| expr '-' expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '-'");
+			
+			  $$ = $1;
+			}
 			| expr '*' expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '*'");
+			
+			  $$ = $1;
+			}
 			| expr '/' expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '/'");
+			
+			  $$ = $1;
+			}
 			| expr DBLEQ expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '=='");
+			
+			  $$ = BOOLEAN;
+			}
 			| expr NOTEQ expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '!='");
+			
+			  $$ = BOOLEAN;
+			}
 			| expr LTEQ expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '<='");
+			
+			  $$ = BOOLEAN;
+			}
 			| expr '<' expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '<'");
+			
+			  $$ = BOOLEAN;
+			}
 			| expr GTEQ expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '>='");
+			
+			  $$ = BOOLEAN;
+			}
 			| expr '>' expr
+			{
+			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+				  typeError("incompatible expression for operator '>'");
+			
+			  $$ = BOOLEAN;
+			}
 			| expr LOGICAND expr
+			{
+			  if ($1 != BOOLEAN || $3 != BOOLEAN)
+				  typeError("incompatible expression for operator '&&'");
+			
+			  $$ = BOOLEAN;
+			}
 			| expr LOGICOR expr
-			| ID multiFuncOpt
-			| '(' expr ')'
-			| INTCON
-			| CHARCON
-			| STRCON
+			{
+			  if ($1 != BOOLEAN || $3 != BOOLEAN)
+				  typeError("incompatible expression for operator '||'");
+			
+			  $$ = BOOLEAN;
+			}
+			| ID { _currID = $1; } multiFuncOpt
+			{
+			  Symbol *currSymbol = recall(_currID);
+			  
+			  if (!currSymbol) {
+				  typeError(sprintf("%s undefined", _currID));
+				  $$ = -1;
+			  } else {
+			  	  $$ = currSymbol->type;
+			  }
+			}
+			| '(' expr ')'	{ $$ = $2; }
+			| INTCON	{ $$ = INT; }
+			| CHARCON	{ $$ = CHAR; }
+			| STRCON	{ $$ = CHAR_ARRAY; }
 			;
 			
 multiFuncOpt: '('')'
-			| '(' expr multiExprOpt ')'
+			{
+			  Symbol *currSymbol = recallGlobal(_currID);
+			
+			  if (currSymbol && currSymbol->parameterListHead 
+			 	      && currSymbol->parameterListHead->type != VOID)
+			      typeError(sprintf("function %s takes no arguments",
+					   _currID));
+			}
+			| '(' expr
+			{
+			  _currParam = recallGlobal(_currID)->parameterListHead;
+			  
+			  if (_currParam->type != $2)
+				  typeError(sprintf("type mismatch in arguments to function %s",
+				      _currID));
+			
+			  _currParam = _currParam->next;
+			}
+			multiExprOpt ')'
+			{
+			  if (_currParam)
+				  typeError(sprintf("more arguments expected for function %s",
+					  _currID));
+			}
 			| '[' expr ']'
+			{
+			  if ($2 != INT && $2 != CHAR)
+				  typeError(sprintf("array index for %s must be INT or CHAR",
+				      _currID));
+			}
 			| /* empty */
 			;
 
@@ -242,6 +448,16 @@ exprOpt:	  expr
 			;
 
 multiExprOpt: multiExprOpt ',' expr
+			{
+			  if (!_currParam)
+				  typeError(sprintf("extra arguments passed to function %s",
+				      _currID));
+			  else if (_currParam->type != $3)
+				  typeError(sprintf("type mismatch in arguments to function %s",
+					  _currID));
+			  
+			  _currParam = _currParam->next;
+			}
 			| /* empty */
 			;
 
