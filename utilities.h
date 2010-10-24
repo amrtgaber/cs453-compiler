@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <string.h>
 
+extern int yylineno;
+
 #define FALSE 			0
 #define TRUE 			1
 

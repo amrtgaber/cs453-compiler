@@ -1,7 +1,7 @@
 /* File: symbalTable.c 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 21/10/2010
+ * Last Modified: 22/10/2010
  * Purpose: Symbol table for use with the C-- compiler.
  */
 
@@ -9,7 +9,7 @@
 #include "utilities.h"
 
 SymbolTable *_stack = NULL;
-Symbol *_currentFunction = NULL;
+Symbol *_currentSymbol = NULL;
 
 /* Function: recall
  * Parameters: char *identifier
@@ -22,7 +22,7 @@ Symbol *recall(char *identifier) {
 		ERROR("Recall called on empty stack.", __LINE__, FALSE);
 
 	Symbol *currSymbol = NULL;
-	SymbolTable currTable = NULL;
+	SymbolTable *currTable = NULL;
 	
 	for(currTable = _stack; currTable; currTable = currTable->below)
 		for(currSymbol = currTable->listHead; currSymbol; 
@@ -53,38 +53,35 @@ Symbol *recallLocal(char *identifier) {
 }
 
 /* Function: insert
- * Parameters: char *identifier, Type type, Value value, Parameter 
+ * Parameters: char *identifier, Type type 
  * Description: Inserts a symbol into the symbol table.
  * Returns: A pointer to the inserted symbol.
  * Preconditions: The stack must not be empty.
  */
-Symbol *insert(char *identifier, Type type, Value value, FunctionType functionType) {
+Symbol *insert(char *identifier, Type type) {
 	if (!_stack)
 		ERROR("Insert called on emtpy stack.", __LINE__, FALSE);
 
 	Symbol *toInsert = NULL;
-	SymbolTable currTable = _stack;
 	
 	if (!(toInsert = malloc(sizeof(Symbol))))
 		ERROR("", __LINE__, TRUE); 				// out of memory
 	
-	toInsert->identifier = strdup(identifier);
+	toInsert->identifier = strdup(identifier); //TODO: memory check
 	toInsert->type = type;
-	toInsert->value = value;
-	toInsert->functionType = functionType;
-	toInser->parameterListHead = NULL;
+	toInsert->functionType = -1;
+	toInsert->parameterListHead = NULL;
 	
-	toInsert->next = currTable->listHead;
-	currTable->listHead = toInsert;
+	toInsert->next = _stack->listHead;
+	_stack->listHead = toInsert;
 	
-	if (functionType)
-		_currentFunction = toInsert;
+	_currentSymbol = toInsert;
 	
 	return toInsert;
 }
 
 /* Function: addParameter
- * Parameters: Type type
+ * Parameters: char *identifier, Type type
  * Description: Adds a parameter to the most recently inserted function then 
  *					declares it as a local variable on the local stack.
  * Returns: void
@@ -100,10 +97,10 @@ void addParameter(char *identifier, Type type) {
 	newParameter->next = NULL;
 	
 	// if the parameter list is null add at head, if not add at end
-	if (!(_currentFunction->parameterListHead)) {
-		_currentFunction->parameterListHead = newParameter;
+	if (!(_currentSymbol->parameterListHead)) {
+		_currentSymbol->parameterListHead = newParameter;
 	} else {
-		currParameter = _currentFunction->parameterListHead;
+		currParameter = _currentSymbol->parameterListHead;
 		
 		while(currParameter->next)
 			currParameter = currParameter->next;
@@ -111,7 +108,7 @@ void addParameter(char *identifier, Type type) {
 		currParameter->next = newParameter;
 	}
 	
-	insert(identifier, type, NULL, NULL);
+	insert(identifier, type);
 }
 
 /* Function: pushSymbolTable
@@ -131,6 +128,28 @@ void pushSymbolTable() {
 	_stack = newTable;
 }
 
+/* Function: freeParameterList
+ * Parameters: Parameter *parameterListHead
+ * Description: Destroys the parameter list.
+ * Returns: void
+ * Preconditions: none
+ */
+void freeParameterList(Parameter *parameterListHead) {
+	if (!parameterListHead)
+		return;
+	
+	Parameter *rear = NULL, *front = NULL;
+	
+	for(rear = parameterListHead, front = rear->next;
+			front; front = front->next) {
+		free(rear);
+		rear = front;
+	}
+	free(rear);
+	
+	parameterListHead = NULL;
+}
+
 /* Function: popSymbolTable
  * Parameters: void
  * Description: Pops the symbol table on the top of the stack.
@@ -142,16 +161,19 @@ void popSymbolTable() {
 		ERROR("Pop called on empty stack.", __LINE__, FALSE);
 	
 	Symbol *rear = NULL, *front = NULL;
+	Parameter *rearp = NULL, *frontp = NULL;
 	SymbolTable *newStackTop = _stack->below;
 	
 	// if the symbol table at the top has symbols, free them first
 	if (_stack->listHead) {
 		for(rear = _stack->listHead, front = rear->next; front; front = front->next) {
 			free(rear->identifier);
+			freeParameterList(rear->parameterListHead);
 			free(rear);
 			rear = front;
 		}
 		free(rear->identifier);
+		freeParameterList(rear->parameterListHead);
 		free(rear);
 	}
 	
