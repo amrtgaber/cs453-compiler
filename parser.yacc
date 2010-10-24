@@ -11,13 +11,16 @@
 #include "utilities.h"
 extern int yylineno;
 extern char* yytext;
-int errorCount = 0;
+Scope _currScope = GLOBAL;
+char *_currID = NULL, *_currFID = NULL;
+Type _currType = -1;
+FunctionType _currFType = -1;
+Parameter *_currParam = NULL;
 %}
 
-%union
-{
-	int n;
-	char* str;
+%union {
+	int integer;
+	char* string;
 }
 
 %start program
@@ -46,13 +49,45 @@ program:	  program declaration ';'
 	    	;
 
 declaration:  type varDcl multiVarDcl
-			| EXTERN type ID '(' paramTypes ')' multiProtDcl
-			| type ID '(' paramTypes ')' multiProtDcl
-			| EXTERN VOID ID '(' paramTypes ')' multiProtDcl
-			| VOID ID '(' paramTypes ')' multiProtDcl
+			| storeExtern type storeID '(' insertFunc paramTypes ')' 
+			      multiProtDcl makeProt
+			| type storeID '(' insertFunc paramTypes ')' multiProtDcl makeProt
+			| storeExtern storeVoid storeID '(' insertFunc paramTypes ')'
+			      multiProtDcl makeProt
+			| storeVoid storeID '(' insertFunc paramTypes ')' multiProtDcl makeProt
+			;
+			
+storeID:	  ID
+			{
+			  _currFID = $1.string;
+			};
+
+storeExtern:  EXTERN
+			{
+			  _currFType = EXTERN;
+			};
+
+storeVoid:	  VOID
+			{
+			  _currType = VOID;
+			};
+
+makeProt:	{
+			  Symbol *prevDcl = recall(_currFID);
+				
+			  if (prevDcl->functionType == PROTOTYPE || prevDcl->functionType == EXTERN) {
+			      typeError(sprintf("Prototype %s previously declared",
+				      _currFID));
+			  } else {
+				  if (_currFType = EXTERN)
+					  prevDcl->functionType = EXTERN;
+				  else
+				      prevDcl->functionType = PROTOTYPE;
+			  }
+			}
 			;
 
-multiProtDcl: multiProtDcl ',' ID '(' paramTypes ')'
+multiProtDcl: multiProtDcl ',' makeProt storeID '(' insertFunc paramTypes ')'
 			| /* empty */
 			;
 
@@ -60,16 +95,51 @@ multiVarDcl:  multiVarDcl ',' varDcl
 			| /* empty */
 			;
 
-varDcl:	  	  ID 
+varDcl:	  	  ID
+			{
+			  _currID = $1.string;
+			
+			  if (recallLocal(_currID)) {
+			      typeError(sprintf("%s previously declared in this function",
+					      _currID));
+			  } else {
+			  	  insert(_currID, _currType, NULL);
+			  }
+			}
 			| ID '[' INTCON ']'
+			{
+			  _currID = $1.string;
+			
+			  if (currType == CHAR)
+				  currType = CHARARRAY);
+			  else
+			      currType = INTARRAY;
+			
+			  if (recallLocal(_currId)) {
+			      typeError(sprintf("%s previously declared in this function",
+					      _currID));
+			  } else {
+			  	  insert(_currID, _currType, NULL);
+			  }
+			}
 			;
 
 type:		  CHAR
+			{
+			  _currType = CHAR;
+			}
 			| INT
+			{
+			  _currType = INT;
+			}
 			;
 
-paramTypes:   VOID
-			| arrayTypeOpt multiParam
+initParam:	{
+			  _currParam = (recall(_currFID))->parameterListHead;
+			};
+
+paramTypes:   initParam VOID
+			| initParam arrayTypeOpt multiParam
 			;
 
 arrayTypeOpt: type ID
@@ -78,6 +148,26 @@ arrayTypeOpt: type ID
 
 multiParam:   multiParam ',' arrayTypeOpt
 			| /* empty */
+			;
+
+insertFunc:	{
+			  Symbol *prevDcl = recall(_currID);
+
+			  if (prevDcl) {
+			      if (prevDcl->functionType == DEFINITION) {
+			          typeError(sprintf("Function %s previously defined",
+				          prevDcl->identifier));
+			      } else if (prevDcl->functionType == EXTERN) {
+			          typeError(sprintf("Function %s previously declared as extern",
+				          prevDcl->identifier));
+				  } else if (prevDcl->functionType == NON_FUNCTION) {
+					  typeError(sprintf("Function %s previously declared",
+						  prevDcl->identifier));
+				  }
+			  } else {
+				      insert(_currID, _currType);
+			  }
+			}
 			;
 
 function:	  type ID '(' paramTypes ')' '{' multiTypeDcl statementOpt '}'
@@ -158,12 +248,23 @@ multiExprOpt: multiExprOpt ',' expr
 %%
 
 main() {
+	pushSymbolTable();						// initialize global symbol table
 	return yyparse();
 }
 
+/* Function: typeError
+ * Parameters: char *message
+ * Description: Prints error message and turns code generation off.
+ * Returns: void
+ * Preconditions: none
+ */
+void typeError(char *message) {
+	fprintf(stderr, "TYPE ERROR: line %d: %s\n", yylineno, message);
+	// TODO turn code generation off
+}
+
 yyerror(char* errorMessage) {
-	fprintf(stderr, "ERROR #%d: line %d: Near token (%s)\n", ++errorCount,
-			yylineno, yytext);
+	fprintf(stderr, "SYNTAX ERROR: line %d: Near token (%s)\n", yylineno, yytext);
 }
 
 yywrap() {

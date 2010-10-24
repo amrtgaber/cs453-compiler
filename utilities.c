@@ -7,7 +7,7 @@
 
 #include "utilities.h"
 
-int errno;
+extern int errno;
 
 /* void ERROR(char *message, unsigned int lineNum, char systemError) -- prints
  * error message then exits program with status -1

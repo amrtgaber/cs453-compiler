@@ -2,4 +2,4 @@
 
 make clean
 make
-./compile < test.c--
+# ./compile < test.c--

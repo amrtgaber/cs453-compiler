@@ -1,7 +1,7 @@
 /* File: symbalTable.h 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 21/10/2010
+ * Last Modified: 22/10/2010
  * Purpose: Header file for symbolTable.c.
  */
 
@@ -32,6 +32,7 @@ typedef enum FunctionType {
 	EXTERN = 0xEA7FECE5,
 	PROTOTYPE,
 	DEFINITION,
+	NON_FUNCTION
 } FunctionType;
 
 /* Union: Value
@@ -48,28 +49,28 @@ typedef union Value {
  * Description: Node for parameter list
  */
 typedef struct Parameter {
-	Type type;
-	Parameter *next;
-}Parameter;
+	Type 				type;
+	struct Parameter 	*next;
+} Parameter;
 
 /* Struct: Symbol
  * Description: Represents a symbol in the symbol table.
  */
 typedef struct Symbol {
-	char	*identifier;
-	Type 	type;				// also stands as the return type for functions
-	Value 	value;
-	FunctionType functionType;
-	Parameter *parameterListHead;
-	Symbol 	*next;
+	char			*identifier;
+	Type 			type;		// also stands as the return type for functions
+	Value 			value;
+	FunctionType 	functionType;
+	Parameter 		*parameterListHead;
+	struct Symbol 	*next;
 } Symbol;
 
 /* Struct: SymbolTable
  * Description: The head node of the symbol table.
  */
 typedef struct SymbolTable {
-	Symbol			*listHead;
-	SymbolTable	 	*below;
+	Symbol					*listHead;
+	struct SymbolTable	 	*below;
 } SymbolTable;
 
 /************************
@@ -95,20 +96,21 @@ Symbol *recall(char *identifier);
 Symbol *recallLocal(char *identifier);
 
 /* Function: insert
- * Parameters: char *identifier, Type type, Value value
+ * Parameters: char *identifier, Type type
  * Description: Inserts a symbol into the symbol table.
  * Returns: A pointer to the inserted symbol.
  * Preconditions: The stack must not be empty.
  */
-Symbol *insert(char *identifier, Type type, Value value);
+Symbol *insert(char *identifier, Type type);
 
 /* Function: addParameter
- * Parameters: Type type
- * Description: Adds a parameter to the most recently inserted function.
+ * Parameters: char *identifier, Type type
+ * Description: Adds a parameter to the most recently inserted function then 
+ *					declares it as a local variable on the local stack.
  * Returns: void
  * Preconditions: The most recently inserted symbol must have been a function.
  */
-void addParameter(Type type);
+void addParameter(char *identifier, Type type);
 
 /* Function: pushSymbolTable
  * Parameters: void
