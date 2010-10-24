@@ -18,11 +18,12 @@
  * Description: Enumerates the different acceptable types in C--.
  */
 typedef enum Type {
-	INT = 0xDEADBEEF,
-	CHAR,
-	INTARRAY,
-	CHARARRAY,
+	CHAR = 0xDEADBEEF,
+	INT,
+	CHAR_ARRAY,
+	INT_ARRAY,
 	VOID
+	BOOLEAN
 } Type;
 
 /* Enum: FunctionType
@@ -94,6 +95,14 @@ Symbol *recall(char *identifier);
  * Preconditions: The stack must not be empty.
  */
 Symbol *recallLocal(char *identifier);
+
+/* Function: recallGlobal
+ * Parameters: char *identifier
+ * Description: Recalls a symbol from the global symbol table.
+ * Returns: A pointer to the symbol if found, NULL otherwise.
+ * Preconditions: The stack must not be empty.
+ */
+Symbol *recallGlobal(char *identifier);
 
 /* Function: insert
  * Parameters: char *identifier, Type type

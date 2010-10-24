@@ -9,7 +9,6 @@
 #include "utilities.h"
 
 SymbolTable *_stack = NULL;
-Symbol *_currentSymbol = NULL;
 
 /* Function: recall
  * Parameters: char *identifier
@@ -52,6 +51,29 @@ Symbol *recallLocal(char *identifier) {
 	return NULL;
 }
 
+/* Function: recallGlobal
+ * Parameters: char *identifier
+ * Description: Recalls a symbol from the global symbol table.
+ * Returns: A pointer to the symbol if found, NULL otherwise.
+ * Preconditions: The stack must not be empty.
+ */
+Symbol *recallGlobal(char *identifier) {
+	if (!_stack)
+		ERROR("RecallGlobal called on empty stack.", __LINE__, FALSE);
+
+	Symbol *currSymbol = NULL;
+	SymbolTable *currTable = _stack;
+	
+	while(currTable->below)
+		currTable = currTable->below;
+	
+	for(currSymbol = currTable->listHead; currSymbol; currSymbol = currSymbol->next)
+		if (strcmp(currSymbol->identifier, identifier) == 0)
+			return currSymbol;
+
+	return NULL;
+}
+
 /* Function: insert
  * Parameters: char *identifier, Type type 
  * Description: Inserts a symbol into the symbol table.
@@ -75,8 +97,6 @@ Symbol *insert(char *identifier, Type type) {
 	toInsert->next = _stack->listHead;
 	_stack->listHead = toInsert;
 	
-	_currentSymbol = toInsert;
-	
 	return toInsert;
 }
 
@@ -85,9 +105,9 @@ Symbol *insert(char *identifier, Type type) {
  * Description: Adds a parameter to the most recently inserted function then 
  *					declares it as a local variable on the local stack.
  * Returns: void
- * Preconditions: The most recently inserted symbol must have been a function.
+ * Preconditions: none
  */
-void addParameter(char *identifier, Type type) {
+void addParameter(char *identifier, Type type, Symbol *currentFunction) {
 	Parameter *newParameter = NULL, *currParameter = NULL;
 	
 	if (!(newParameter = malloc(sizeof(Parameter))))
@@ -97,10 +117,10 @@ void addParameter(char *identifier, Type type) {
 	newParameter->next = NULL;
 	
 	// if the parameter list is null add at head, if not add at end
-	if (!(_currentSymbol->parameterListHead)) {
-		_currentSymbol->parameterListHead = newParameter;
+	if (!(currentFunction->parameterListHead)) {
+		currentFunction->parameterListHead = newParameter;
 	} else {
-		currParameter = _currentSymbol->parameterListHead;
+		currParameter = currentFunction->parameterListHead;
 		
 		while(currParameter->next)
 			currParameter = currParameter->next;
@@ -108,7 +128,8 @@ void addParameter(char *identifier, Type type) {
 		currParameter->next = newParameter;
 	}
 	
-	insert(identifier, type);
+	if (type != VOID)
+		insert(identifier, type);
 }
 
 /* Function: pushSymbolTable
