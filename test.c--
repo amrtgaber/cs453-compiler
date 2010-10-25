@@ -1,0 +1,12 @@
+int x, y, z, ints[50], integer, moreInts[100];
+
+char a, b, c, chars[100], character, moreChars[255];
+
+int func1(int arg1, char arg2) {
+	a = 'c';
+	a = 5;
+	x = 10;
+	x = 'd';
+	
+	return x;
+}

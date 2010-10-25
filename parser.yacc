@@ -9,14 +9,17 @@
 %{
 #include "symbolTable.h"
 #include "utilities.h"
+
+void typeError(char *errorMessage);
+
 extern int yylineno;
 extern char* yytext;
-Scope _currScope = GLOBAL;
 char *_currID = NULL, *_currFID = NULL;
 Type _currType = -1;
 FunctionType _currFType = -1;
 Parameter *_currParam = NULL;
 char _returnedValue = FALSE;
+char _errorMessage[255];
 %}
 
 %union {
@@ -26,7 +29,8 @@ char _returnedValue = FALSE;
 
 %start program
 
-%type	<int>	expr multiFuncOpt exprOpt
+%type	<integer>	expr multiFuncOpt exprOpt
+%type 	<string>	ID storeID
 
 %token ID INTCON CHARCON STRCON CHAR INT VOID IF ELSE WHILE	FOR	RETURN EXTERN
 			UMINUS DBLEQ NOTEQ LTEQ GTEQ LOGICAND LOGICOR OTHER
@@ -65,34 +69,43 @@ storeFID:	  ID
 			  _currFID = $1;
 			};
 
+storeID:	  ID
+			{
+			  _currID = $1;
+			  $$ = $1;
+			};
+
 storeExtern:  EXTERN
 			{
-			  _currFType = EXTERN;
+			  _currFType = EXTERN_TYPE;
 			};
 
 storeVoid:	  VOID
 			{
-			  _currType = VOID;
+			  _currType = VOID_TYPE;
 			};
 
 makeProt:	{
 			  Symbol *prevDcl = recallGlobal(_currFID);
 	
-			  if (prevDcl->functionType == PROTOTYPE || prevDcl->functionType == EXTERN) {
-			      typeError(sprintf("prototype %s previously declared",
-				      _currFID));
+			  if (prevDcl->functionType == PROTOTYPE || prevDcl->functionType == EXTERN_TYPE) {
+				  sprintf(_errorMessage, "prototype %s previously declared",
+					  _currFID);
+			      typeError(_errorMessage);
 			  } else {
-				  if (_currFType = EXTERN)
-					  prevDcl->functionType = EXTERN;
+				  if (_currFType == EXTERN_TYPE)
+					  prevDcl->functionType = EXTERN_TYPE;
 				  else
 				      prevDcl->functionType = PROTOTYPE;
 			  }
-			  
+			
+			printSymbolTable();  
+			
 			  popSymbolTable();
 			}
 			;
 
-multiProtDcl: multiProtDcl ',' makeProt storeID '(' insertFunc paramTypes ')'
+multiProtDcl: multiProtDcl ',' makeProt storeFID '(' insertFunc paramTypes ')'
 			| /* empty */
 			;
 
@@ -105,37 +118,46 @@ varDcl:	  	  ID
 			  _currID = $1;
 			
 			  if (recallLocal(_currID)) {
-			      typeError(sprintf("%s previously declared in this function",
-					      _currID));
+				  sprintf(_errorMessage, "%s previously declared in this function",
+					  _currID);
+			      typeError(_errorMessage);
 			  } else {
-			  	  insert(_currID, _currType, NULL);
+			  	  Symbol *currSymbol = insert(_currID, _currType);
+				  currSymbol->functionType = NON_FUNCTION;
 			  }
 			}
 			| ID '[' INTCON ']'
 			{
 			  _currID = $1;
 			
-			  if (_currType == CHAR)
+			  if (_currType == CHAR_TYPE)
 				  _currType = CHAR_ARRAY;
 			  else
 			      _currType = INT_ARRAY;
 			
-			  if (recallLocal(_currId)) {
-			      typeError(sprintf("%s previously declared in this function",
-					      _currID));
+			  if (recallLocal(_currID)) {
+				  sprintf(_errorMessage, "%s previously declared in this function",
+					  _currID);
+			      typeError(_errorMessage);
 			  } else {
-			  	  insert(_currID, _currType, NULL);
+			  	  Symbol *currSymbol = insert(_currID, _currType);
+			      currSymbol->functionType = NON_FUNCTION;
 			  }
+			
+			  if (_currType == CHAR_ARRAY)
+				  _currType = CHAR_TYPE;
+			  else
+			      _currType = INT_TYPE;
 			}
 			;
 
 type:		  CHAR
 			{
-			  _currType = CHAR;
+			  _currType = CHAR_TYPE;
 			}
 			| INT
 			{
-			  _currType = INT;
+			  _currType = INT_TYPE;
 			}
 			;
 
@@ -144,6 +166,7 @@ initParam:	{
 			  
 			  if (currSymbol)
 				  _currParam = currSymbol->parameterListHead;
+				
 			};
 
 paramTypes:   initParam VOID 
@@ -151,10 +174,10 @@ paramTypes:   initParam VOID
 			  Symbol *currentFunction = recallGlobal(_currFID);
 			
 		      if (_currParam) {
-		 		  if (_currParam->type != VOID)
+		 		  if (_currParam->type != VOID_TYPE)
 				  	  typeError("Type mismatch: non-VOID parameter(s) expected");
 			  } else {
-				  addParameter(NULL, VOID, currentFunction);
+				  addParameter(NULL, VOID_TYPE, currentFunction);
 			  }
 
 			  _currParam = NULL;
@@ -170,41 +193,47 @@ paramTypes:   initParam VOID
 arrayTypeOpt: type ID
 			{
 			  _currID = $2;
+			
 			  Symbol *currentFunction = recallGlobal(_currFID);
 			
 			    if (recallLocal(_currID)) {
-			      typeError(sprintf("%s previously declared in this function",
-					      _currID));
+				  sprintf(_errorMessage, "%s previously declared in this function",
+					  _currID);
+			      typeError(_errorMessage);
 			    } else {
 			  	  	if (_currParam) {
 					  	if (_currParam->type != _currType) {
-						  	if (_currType == CHAR)
+						  	if (_currType == CHAR_TYPE)
 							  	typeError("CHAR does not match previous declaration");
 						  	else
 							  	typeError("INT does not match previous declaration");
 						} else {
-							insert(_currID, _currType);
+							Symbol *currSymbol = insert(_currID, _currType);
+						    currSymbol->functionType = NON_FUNCTION;
 						}
 			  	 	} else {
-				  		addParameter(_currID, _currType, currentFunction);
+				  		Symbol *currSymbol = addParameter(_currID, _currType, currentFunction);
+					    currSymbol->functionType = NON_FUNCTION;
 			  		}
 				}
-						
-			  _currParam = _currParam->next;
+				
+			  if (_currParam)
+			  	  _currParam = _currParam->next;
 			}
 			| type ID '['']'
 			{
 			  _currID = $2;
 			  Symbol *currentFunction = recallGlobal(_currFID);
 			
-			  if (_currType == CHAR)
+			  if (_currType == CHAR_TYPE)
 				  _currType = CHAR_ARRAY;
 			  else
 			      _currType = INT_ARRAY;
 			
 			  if (recallLocal(_currID)) {
-			      typeError(sprintf("%s previously declared in this function",
-					      _currID));
+				  sprintf(_errorMessage, "%s previously declared in this function",
+					  _currID);
+			      typeError(_errorMessage);
 			  } else {
 			  	  if (_currParam) {
 					  if (_currParam->type != _currType) {
@@ -220,7 +249,8 @@ arrayTypeOpt: type ID
 			  	  }
 			  }
 			
-			  _currParam = _currParam->next;
+			 if (_currParam)
+			   _currParam = _currParam->next;
 			}
 			;
 
@@ -233,20 +263,24 @@ insertFunc:	{
 
 			  if (prevDcl) {
 			      if (prevDcl->functionType == DEFINITION) {
-			          typeError(sprintf("function %s previously defined",
-				          prevDcl->identifier));
-			      } else if (prevDcl->functionType == EXTERN) {
-			          typeError(sprintf("function %s previously declared as extern",
-				          prevDcl->identifier));
+				      sprintf(_errorMessage, "function %s previously defined",
+						  prevDcl->identifier);
+			          typeError(_errorMessage);
+			      } else if (prevDcl->functionType == EXTERN_TYPE) {
+					  sprintf(_errorMessage, "function %s previously declared as extern",
+						  prevDcl->identifier);
+			          typeError(_errorMessage);
 				  } else if (prevDcl->functionType == NON_FUNCTION) {
-					  typeError(sprintf("function %s previously declared",
-						  prevDcl->identifier));
+					  sprintf(_errorMessage, "function %s previously declared",
+						  prevDcl->identifier);
+					  typeError(_errorMessage);
 				  } else if (prevDcl->type != _currType) {
-				      typeError(sprintf("return type of function %s doesn't match previous declaration",
-						  prevDcl->identifier));
+					  sprintf(_errorMessage, "return type of function %s doesn't match previous declaration",
+						  prevDcl->identifier);
+				      typeError(_errorMessage);
 				  }
 			  } else {
-				      Symbol *currFunction = insert(_currID, _currType);
+				      Symbol *currFunction = insert(_currFID, _currType);
 					  currFunction->functionType = DEFINITION;
 					  currFunction->type = _currType;
 			  }
@@ -258,13 +292,15 @@ insertFunc:	{
 function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  	  statementOpt '}' 
 			{ 
-			  if (!_returnedValue)
-				  typeError(sprintf("function %s must have at least one return statement",
-					  _currFID));
+			  if (!_returnedValue) {
+				  sprintf(_errorMessage, "function %s must have at least one return statement",
+					  _currFID);
+				  typeError(_errorMessage);
+			  }
 					
 			  popSymbolTable();
 			}
-			| storeVOID storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
+			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  statementOpt '}' { popSymbolTable(); }
 			;
 
@@ -304,10 +340,12 @@ statement:	  IF '(' expr ')' statement
 				  typeError("unexpected return statement");
 			  } else {
 				  if (currSymbol->type != $2)
-				      if ((currSymbol->type != INT || currSymbol->type != CHAR)
-						  && ($2 != INT || $2 != CHAR))
-					typeError(sprintf("return type for function %s does not match declared type",
-						_currFID));
+				      if ((currSymbol->type != INT_TYPE || currSymbol->type != CHAR_TYPE)
+						  && ($2 != INT_TYPE || $2 != CHAR_TYPE)) {
+						  	sprintf(_errorMessage, "return type for function %s does not match declared type",
+								_currFID);
+						  typeError(_errorMessage);
+					  }
 			  	  else
 					  _returnedValue = TRUE;
 			  }
@@ -319,41 +357,52 @@ statement:	  IF '(' expr ')' statement
 			  if (!currSymbol) {
 				  typeError("unexpected return statement");
 			  } else {
-				  if (currSymbol->type != VOID)
-					typeError(sprintf("return type for function %s does not match declared type",
-						_currFID));
+				  if (currSymbol->type != VOID_TYPE) {
+					  sprintf(_errorMessage, "return type for function %s does not match declared type",
+						  _currFID);
+					  typeError(_errorMessage);
+				  }
 			  }
 			}
 			| assignment ';'
-			| ID '('')'
+			| storeID '('')'
 			{
-			  _currID = $1;
 			  Symbol *currSymbol = recallGlobal(_currID);
 			  
 			  if (currSymbol) {
-			      if (!currSymbol->parameterListHead)
-				      typeError(sprintf("%s is not a function", _currID));
+			      if (!currSymbol->parameterListHead) {
+					  sprintf(_errorMessage, "%s is not a function", _currID);
+				      typeError(_errorMessage);
+				  }
 			
-			      else if (currSymbol->parameterListHead->type != VOID)
-			          typeError(sprintf("function %s takes non-VOID arguments",
-					      _currID));
+			      else if (currSymbol->parameterListHead->type != VOID_TYPE) {
+			          sprintf(_errorMessage, "function %s takes non-VOID arguments",
+						  _currID);
+			   	      typeError(_errorMessage);
+				  }
 				  
-				  if (currSymbol->type != VOID)
-				      typeError(sprintf("function %s must return VOID to be used as a statement",
-						  _currID));
+				  if (currSymbol->type != VOID_TYPE) {
+					  sprintf(_errorMessage, "function %s must return VOID to be used as a statement",
+						  _currID);
+				      typeError(_errorMessage);
+				  }
 			  }
 			}
-			| ID { _currID = $1; } '(' initParam args multiExprOpt ')' ';'
+			| storeID '(' initParam args multiExprOpt ')' ';'
 			{
 			  Symbol *currSymbol = recallGlobal(_currID);
 
 			  if (currSymbol)
-			      if (currSymbol->functionType == NON_FUNCTION)
-			          typeError(sprintf("%s is not a function", _currID));
+			      if (currSymbol->functionType == NON_FUNCTION) {
+					  sprintf(_errorMessage, "%s is not a function", _currID);
+			          typeError(_errorMessage);
+				  }
 			
-			  if (_currParam)
-				  typeError(sprintf("more arguments expected for function %s",
-					  _currID));
+			  if (_currParam) {
+				  sprintf(_errorMessage, "more arguments expected for function %s",
+					  _currID);
+				  typeError(_errorMessage);
+			  }
 			}
 			| '{' statementOpt '}'
 			| ';'
@@ -366,40 +415,50 @@ statementOpt: statementOpt statement
 			| /* empty */
 			;
 
-assignment:	  ID '=' expr
+assignment:	  storeID '=' expr
 			{
 			  _currID = $1;
 			  Symbol *currSymbol = recall(_currID);
 			
 			  if (!currSymbol) {
-				  typeError(sprintf("%s undefined", _currID));
+				  sprintf(_errorMessage, "%s undefined", _currID);
+				  typeError(_errorMessage);
 		  	  } else {
 				  if (currSymbol->type != $3) {
-					  if ((currSymbol->type != INT || currSymbol->type != CHAR)
-						  && ($3 != INT || $3 != CHAR))
-						typeError(sprintf("incompatible types for assignment of %s",
-						    _currID));
+					  if ((currSymbol->type != INT_TYPE || currSymbol->type != CHAR_TYPE)
+						  && ($3 != INT_TYPE || $3 != CHAR_TYPE)) {
+						sprintf(_errorMessage, "incompatible types for assignment of %s",
+							_currID);
+						typeError(_errorMessage);
+					  }
 				  }
 			  }
 			}
-			| ID '[' expr ']' '=' expr
+			| storeID '[' expr ']' '=' expr
 			{
 			  _currID = $1;
 			  Symbol *currSymbol = recall(_currID);
 			
 			  if (!currSymbol) {
-				  typeError(sprintf("%s undefined", _currID));
+				  sprintf(_errorMessage, "%s undefined", _currID);
+				  typeError(_errorMessage);
 		  	  } else {
-				  if (currSymbol->type != INT_ARRAY && currSymbol->type != CHAR_ARRAY)
-					  typeError(sprintf("%s must be an ARRAY to be indexed", _currID));
+				  if (currSymbol->type != INT_ARRAY && currSymbol->type != CHAR_ARRAY) {
+					  sprintf(_errorMessage, "%s must be an ARRAY to be indexed", _currID);
+					  typeError(_errorMessage);
+				  }
 				  
-				  if ($3 != INT && $3 != CHAR)
-					  typeError(sprintf("ARRAY index for %s must be INT or CHAR",
-				      	  _currID));
+				  if ($3 != INT_TYPE && $3 != CHAR_TYPE) {
+					  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
+						  _currID);
+					  typeError(_errorMessage);
+				  }
 				  
-				  if ($6 != INT && $6 != CHAR)  
-						typeError(sprintf("incompatible types for assignment of %s",
-						    _currID));
+				  if ($6 != INT_TYPE && $6 != CHAR_TYPE)  {
+					    sprintf(_errorMessage, "incompatible types for assignment of %s",
+							_currID);
+						typeError(_errorMessage);
+				  }
 			  }
 			}
 			;
@@ -410,7 +469,7 @@ assgOpt:	  assignment
 
 expr:		  '-' expr %prec UMINUS
 			{
-			  if ($2 != INT && $2 != CHAR)
+			  if ($2 != INT_TYPE && $2 != CHAR_TYPE)
 				  typeError("incompatible expression for operator '-'");
 			
 			  $$ = $2;
@@ -424,70 +483,70 @@ expr:		  '-' expr %prec UMINUS
 			}
 			| expr '+' expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '+'");
 			
 			  $$ = $1;
 			}
 			| expr '-' expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '-'");
 			
 			  $$ = $1;
 			}
 			| expr '*' expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '*'");
 			
 			  $$ = $1;
 			}
 			| expr '/' expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '/'");
 			
 			  $$ = $1;
 			}
 			| expr DBLEQ expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '=='");
 			
 			  $$ = BOOLEAN;
 			}
 			| expr NOTEQ expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '!='");
 			
 			  $$ = BOOLEAN;
 			}
 			| expr LTEQ expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '<='");
 			
 			  $$ = BOOLEAN;
 			}
 			| expr '<' expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '<'");
 			
 			  $$ = BOOLEAN;
 			}
 			| expr GTEQ expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '>='");
 			
 			  $$ = BOOLEAN;
 			}
 			| expr '>' expr
 			{
-			  if (($1 != INT && $1 != CHAR) || ($3 != INT && $3 != CHAR))
+			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
 				  typeError("incompatible expression for operator '>'");
 			
 			  $$ = BOOLEAN;
@@ -511,26 +570,29 @@ expr:		  '-' expr %prec UMINUS
 			  Symbol *currSymbol = recall(_currID);
 			  
 			  if (!currSymbol) {
-				  typeError(sprintf("%s undefined", _currID));
+				  sprintf(_errorMessage, "%s undefined", _currID);
+				  typeError(_errorMessage);
 				  $$ = -1;
 			  } else if (currSymbol->functionType != NON_FUNCTION) {
-				  if (currSymbol->type == VOID)
-					  typeError(sprintf("void function %s in expression", _currID));
+				  if (currSymbol->type == VOID_TYPE) {
+					  sprintf(_errorMessage, "void function %s in expression", _currID);
+					  typeError(_errorMessage);
 					  $$ = -1;
+				  }
 			  } else {
 				  if ($3) {
 				  	  if (currSymbol->type == CHAR_ARRAY)
-					  	  $$ = CHAR;
+					  	  $$ = CHAR_TYPE;
 				  	  else if (currSymbol->type == INT_ARRAY)
-					  	  $$ = INT;
+					  	  $$ = INT_TYPE;
 				  } else {
 			  	  	  $$ = currSymbol->type;
 				  }
 			  }
 			}
 			| '(' expr ')'	{ $$ = $2; }
-			| INTCON	{ $$ = INT; }
-			| CHARCON	{ $$ = CHAR; }
+			| INTCON	{ $$ = INT_TYPE; }
+			| CHARCON	{ $$ = CHAR_TYPE; }
 			| STRCON	{ $$ = CHAR_ARRAY; }
 			;
 			
@@ -539,12 +601,14 @@ multiFuncOpt: '('')'
 			  Symbol *currSymbol = recallGlobal(_currID);
 			  
 			  if (currSymbol) {
-			      if (!currSymbol->parameterListHead)
-				      typeError(sprintf("%s is not a function", _currID));
-			
-			      else if (currSymbol->parameterListHead->type != VOID)
-			          typeError(sprintf("function %s takes non-VOID arguments",
-					      _currID));
+			      if (!currSymbol->parameterListHead) {
+					  sprintf(_errorMessage, "%s is not a function", _currID);
+				      typeError(_errorMessage);
+			      } else if (currSymbol->parameterListHead->type != VOID_TYPE) {
+					  sprintf(_errorMessage, "function %s takes non-VOID arguments",
+						  _currID);
+			          typeError(_errorMessage);
+			      }
 			  }
 			
 			  $$ = FALSE;
@@ -554,12 +618,15 @@ multiFuncOpt: '('')'
 			  Symbol *currSymbol = recallGlobal(_currID);
 
 			  if (currSymbol)
-			      if (currSymbol->functionType == NON_FUNCTION)
-			          typeError(sprintf("%s is not a function", _currID));
-			
-			  if (_currParam)
-				  typeError(sprintf("more arguments expected for function %s",
-					  _currID));
+			      if (currSymbol->functionType == NON_FUNCTION) {
+				      sprintf(_errorMessage, "%s is not a function", _currID);
+			          typeError(_errorMessage);
+				  }
+			  if (_currParam) {
+				  sprintf(_errorMessage, "more arguments expected for function %s",
+					  _currID);
+				  typeError(_errorMessage);
+			  }
 			  
 			  $$ = FALSE;
 			}
@@ -568,12 +635,16 @@ multiFuncOpt: '('')'
 			  Symbol *currSymbol = recallGlobal(_currID);
 
 			  if (currSymbol)
-				  if (currSymbol->type != CHAR_ARRAY && currSymbol->type != INT_ARRAY)
-					  typeError(sprintf("%s must be an ARRAY to be indexed",
-						  _currID));
-				  if ($2 != INT && $2 != CHAR)
-				  	  typeError(sprintf("ARRAY index for %s must be INT or CHAR",
-				      	  _currID));
+				  if (currSymbol->type != CHAR_ARRAY && currSymbol->type != INT_ARRAY) {
+					  sprintf(_errorMessage, "%s must be an ARRAY to be indexed",
+						  _currID);
+					  typeError(_errorMessage);
+				  }
+				  if ($2 != INT_TYPE && $2 != CHAR_TYPE) {
+					  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
+						  _currID);
+				  	  typeError(_errorMessage);
+				  }
 				
 			  $$ = TRUE;
 			}
@@ -585,12 +656,16 @@ args:		  expr
 			  Symbol *currSymbol = recallGlobal(_currID);
 
 			  if (currSymbol) {
-		  	  	  if (!_currParam && currSymbol->type != NON_FUNCTION)
-				      typeError(sprintf("extra arguments passed to function %s",
-				          _currID));
-		  	      else if (_currParam && _currParam->type != $2)
-			  	      typeError(sprintf("type mismatch in arguments to function %s",
-			      	      _currID));
+		  	  	  if (!_currParam && currSymbol->type != NON_FUNCTION) {
+					  sprintf(_errorMessage, "extra arguments passed to function %s",
+						  _currID);
+				      typeError(_errorMessage);
+				  }
+		  	      else if (_currParam && _currParam->type != $1) {
+					  sprintf(_errorMessage, "type mismatch in arguments to function %s",
+						  _currID);
+			  	      typeError(_errorMessage);
+				  }
 			  }
 		  	  
 		      if (_currParam)
