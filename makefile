@@ -4,10 +4,10 @@
 # Last Modified: 22/10/2010
 # Prupose: Build the C-- compiler using flex, yacc, and gcc.
 
-compile: scanner.lex parser.yacc symbolTable.o utilities.o
+compile: scanner.lex parser.yacc utilities.o symbolTable.o
 	yacc -d parser.yacc
 	flex scanner.lex
-	gcc lex.yy.c y.tab.c -o compile
+	gcc lex.yy.c y.tab.c utilities.o symbolTable.o -o compile
 
 utilities.o: utilities.c utilities.h
 	gcc utilities.c -c

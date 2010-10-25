@@ -45,8 +45,9 @@ Symbol *recallLocal(char *identifier) {
 	Symbol *currSymbol = NULL;
 	
 	for(currSymbol = _stack->listHead; currSymbol; currSymbol = currSymbol->next)
-		if (strcmp(currSymbol->identifier, identifier) == 0)
-			return currSymbol;
+		if (currSymbol->identifier)
+			if (strcmp(currSymbol->identifier, identifier) == 0)
+				return currSymbol;
 
 	return NULL;
 }
@@ -88,8 +89,14 @@ Symbol *insert(char *identifier, Type type) {
 	
 	if (!(toInsert = malloc(sizeof(Symbol))))
 		ERROR("", __LINE__, TRUE); 				// out of memory
-	
-	toInsert->identifier = strdup(identifier); //TODO: memory check
+		
+	if (identifier) {
+		if (!(toInsert->identifier = strdup(identifier)))
+			ERROR("", __LINE__, TRUE); 				// out of memory
+	} else {
+		toInsert->identifier = NULL;
+	}
+		
 	toInsert->type = type;
 	toInsert->functionType = -1;
 	toInsert->parameterListHead = NULL;
@@ -101,13 +108,13 @@ Symbol *insert(char *identifier, Type type) {
 }
 
 /* Function: addParameter
- * Parameters: char *identifier, Type type
+ * Parameters: char *identifier, Type type, Symbol *currentFunction
  * Description: Adds a parameter to the most recently inserted function then 
  *					declares it as a local variable on the local stack.
- * Returns: void
+ * Returns: The parameter that was inserted if not void. If void returns NULL.
  * Preconditions: none
  */
-void addParameter(char *identifier, Type type, Symbol *currentFunction) {
+Symbol *addParameter(char *identifier, Type type, Symbol *currentFunction) {
 	Parameter *newParameter = NULL, *currParameter = NULL;
 	
 	if (!(newParameter = malloc(sizeof(Parameter))))
@@ -128,8 +135,9 @@ void addParameter(char *identifier, Type type, Symbol *currentFunction) {
 		currParameter->next = newParameter;
 	}
 	
-	if (type != VOID)
-		insert(identifier, type);
+	if (type != VOID_TYPE)
+		return insert(identifier, type);
+	return NULL;
 }
 
 /* Function: pushSymbolTable
@@ -201,3 +209,79 @@ void popSymbolTable() {
 	free(_stack);
 	_stack = newStackTop;
 }
+
+/* Function: printSymbolTable
+ * Parameters: none
+ * Description: Prints the symbol table to the screen
+ * Returns: none
+ * Preconditions: The stack must not be empty.
+ */
+void printSymbolTable() {
+	if (!_stack)
+		ERROR("Recall called on empty stack.", __LINE__, FALSE);
+
+	Symbol *currSymbol = NULL;
+	SymbolTable *currTable = NULL;
+	
+	for(currTable = _stack; currTable; currTable = currTable->below) {
+		if (currTable->below)
+			printf("LOCAL SCOPE:\n");
+		else
+			printf("GLOBAL SCOPE:\n");
+		for(currSymbol = currTable->listHead; currSymbol; 
+				currSymbol = currSymbol->next) {
+			printf("\tSymbol: %s\n", currSymbol->identifier);
+			printf("\tType: %s\n", typeAsString(currSymbol->type));
+			printf("\tFunctionType: %s\n", functionTypeAsString(currSymbol->functionType));
+			printf("\tParameters: ");
+			printParamList(currSymbol->parameterListHead);
+			printf("\n\n");
+		}
+	}
+}
+
+char *typeAsString(Type type) {
+	if (type == CHAR_TYPE)
+		return "CHAR";
+	if (type == INT_TYPE)
+		return "INT";
+	if (type == CHAR_ARRAY)
+		return "CHAR_ARRAY";
+	if (type == INT_ARRAY)
+		return "INT_ARRAY";
+	if (type == VOID_TYPE)
+		return "VOID";
+	if (type == BOOLEAN)
+		return "BOOLEAN";
+	
+	return "UNKNOWN";
+}
+
+char *functionTypeAsString(FunctionType functionType) {
+	if (functionType == EXTERN_TYPE)
+		return "EXTERN";
+	if (functionType == PROTOTYPE)
+		return "PROTOTYPE";
+	if (functionType == DEFINITION)
+		return "DEFINITION";
+	if (functionType == NON_FUNCTION)
+		return "NON_FUNCTION";
+	
+	return "UNKNOWN";
+}
+
+void printParamList(Parameter *parameterListHead) {
+	if (!parameterListHead) {
+		printf("NONE");
+		return;
+	}
+	
+	Parameter *currParam = NULL;
+	
+	printf("%s", typeAsString(parameterListHead->type));
+	
+	for(currParam = parameterListHead->next; currParam; currParam = currParam->next) {
+		printf("->%s", typeAsString(currParam->type));
+	}
+}
+	

@@ -18,11 +18,11 @@
  * Description: Enumerates the different acceptable types in C--.
  */
 typedef enum Type {
-	CHAR = 0xDEADBEEF,
-	INT,
+	CHAR_TYPE = 0xDEADBEEF,
+	INT_TYPE,
 	CHAR_ARRAY,
 	INT_ARRAY,
-	VOID
+	VOID_TYPE,
 	BOOLEAN
 } Type;
 
@@ -30,7 +30,7 @@ typedef enum Type {
  * Description: Enumerates the different types of functions.
  */
 typedef enum FunctionType {
-	EXTERN = 0xEA7FECE5,
+	EXTERN_TYPE = 0xEA7FECE5,
 	PROTOTYPE,
 	DEFINITION,
 	NON_FUNCTION
@@ -113,13 +113,13 @@ Symbol *recallGlobal(char *identifier);
 Symbol *insert(char *identifier, Type type);
 
 /* Function: addParameter
- * Parameters: char *identifier, Type type
+ * Parameters: char *identifier, Type type, Symbol *currentFunction
  * Description: Adds a parameter to the most recently inserted function then 
  *					declares it as a local variable on the local stack.
- * Returns: void
- * Preconditions: The most recently inserted symbol must have been a function.
+ * Returns: The parameter that was inserted if not void. If void returns NULL.
+ * Preconditions: none
  */
-void addParameter(char *identifier, Type type);
+Symbol *addParameter(char *identifier, Type type, Symbol *currentFunction);
 
 /* Function: pushSymbolTable
  * Parameters: void
@@ -136,5 +136,19 @@ void pushSymbolTable();
  * Preconditions: The stack must not be empty.
  */
 void popSymbolTable();
+
+/* Function: printSymbolTable
+ * Parameters: none
+ * Description: Prints the symbol table to the screen
+ * Returns: none
+ * Preconditions: The stack must not be empty.
+ */
+void printSymbolTable();
+
+char *typeAsString(Type type);
+
+char *functionTypeAsString(FunctionType functionType);
+
+void printParamList(Parameter *parameterListHead);
 
 #endif
