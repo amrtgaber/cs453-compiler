@@ -1,7 +1,7 @@
 /* File: parser.yacc 
  * Author: Amr Gaber
  * Created: 24/9/2010
- * Last Modified: 24/10/2010
+ * Last Modified: 25/10/2010
  * Purpose: Parser for the C-- compiler. Used with scanner.lex and makefile to
  * 				construct the C-- compiler.
  */
@@ -10,16 +10,24 @@
 #include "symbolTable.h"
 #include "utilities.h"
 
+typedef struct FunctionCall {
+	char *identifier;
+	Parameter *currParam;
+	struct FunctionCall *below;
+} FunctionCall;
+
 void typeError(char *errorMessage);
+FunctionCall *pushFunctionCall(Symbol *function);
+FunctionCall *peekFunctionCall();
+void popFunctionCall();
 
 extern int yylineno;
 extern char* yytext;
-char *_currID = NULL, *_currFID = NULL;
+char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255];
 Type _currType = -1;
 FunctionType _currFType = -1;
 Parameter *_currParam = NULL;
-char _returnedValue = FALSE;
-char _errorMessage[255];
+FunctionCall *_callStack = NULL;
 %}
 
 %union {
@@ -300,12 +308,12 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  typeError(_errorMessage);
 			  }
 					
-			  printSymbolTable();
+			  //printSymbolTable();
 					
 			  popSymbolTable();
 			}
 			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
-				  statementOpt '}' { printSymbolTable(); popSymbolTable(); }
+				  statementOpt '}' { /*printSymbolTable();*/ popSymbolTable(); }
 			;
 
 multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
@@ -344,11 +352,13 @@ statement:	  IF '(' expr ')' statement
 				  typeError("unexpected return statement");
 			  } else {
 				  if (currSymbol->type != $2) {
-				      if ((currSymbol->type != INT_TYPE || currSymbol->type != CHAR_TYPE)
-						  && ($2 != INT_TYPE || $2 != CHAR_TYPE)) {
+				      if ((currSymbol->type != INT_TYPE && currSymbol->type != CHAR_TYPE)
+						  && ($2 != INT_TYPE && $2 != CHAR_TYPE)) {
 						  	sprintf(_errorMessage, "return type for function %s does not match declared type",
 								_currFID);
 						  typeError(_errorMessage);
+					  } else {
+						_returnedValue = TRUE;
 					  }
 			  	  } else {
 					  _returnedValue = TRUE;
@@ -393,21 +403,33 @@ statement:	  IF '(' expr ')' statement
 				  }
 			  }
 			}
-			| storeID '(' initParam args multiExprOpt ')' ';'
+			| storeID '('
 			{
 			  Symbol *currSymbol = recallGlobal(_currID);
 
-			  if (currSymbol)
-			      if (currSymbol->functionType == NON_FUNCTION) {
+			  if (!currSymbol) {
+				  	sprintf(_errorMessage, "%s undefined", _currID);
+			        typeError(_errorMessage);
+			  } else {
+				  if (currSymbol->functionType == NON_FUNCTION) {
 					  sprintf(_errorMessage, "%s is not a function", _currID);
 			          typeError(_errorMessage);
+				  } else {
+					  if (currSymbol->type != VOID_TYPE) {
+						  sprintf(_errorMessage, "function %s must return VOID to be used as a statement",
+							  _currID);
+					      typeError(_errorMessage);
+					  }
+					  pushFunctionCall(currSymbol);
 				  }
-			
-			  if (_currParam) {
-				  sprintf(_errorMessage, "more arguments expected for function %s",
-					  _currID);
-				  typeError(_errorMessage);
 			  }
+			}
+			  args multiExprOpt ')' ';'
+			{
+			  
+			  // TODO mimic similar rule under expr
+			  // pop function call
+			  
 			}
 			| '{' statementOpt '}'
 			| ';'
@@ -570,29 +592,37 @@ expr:		  '-' expr %prec UMINUS
 			
 			  $$ = BOOLEAN;
 			}
-			| ID { _currID = $1; } multiFuncOpt
-			{
-			  Symbol *currSymbol = recall(_currID);
+			| ID 
+			{ 
+			  _currID = $1;
+			  Symbol *currSymbol = recallGlobal(_currID);
 			  
 			  if (!currSymbol) {
 				  sprintf(_errorMessage, "%s undefined", _currID);
 				  typeError(_errorMessage);
 				  $$ = -1;
-			  } else if (currSymbol->functionType != NON_FUNCTION) {
-				  if (currSymbol->type == VOID_TYPE) {
-					  sprintf(_errorMessage, "void function %s in expression", _currID);
-					  typeError(_errorMessage);
-					  $$ = -1;
-				  }
 			  } else {
-				  if ($3) {
-				  	  if (currSymbol->type == CHAR_ARRAY)
-					  	  $$ = CHAR_TYPE;
-				  	  else if (currSymbol->type == INT_ARRAY)
-					  	  $$ = INT_TYPE;
-				  } else {
-			  	  	  $$ = currSymbol->type;
+				   if (currSymbol->functionType != NON_FUNCTION) {
+					  if (currSymbol->type == VOID_TYPE) {
+						  sprintf(_errorMessage, "void function %s in expression", _currID);
+						  typeError(_errorMessage);
+						  $$ = -1;
+					  }
 				  }
+			  }
+			}
+			multiFuncOpt
+			{
+			  // TODO currSymbol undefined here! GODDAMN IT
+			  if (!$$) {
+			  	  if ($3) {
+			  	  	  if (currSymbol->type == CHAR_ARRAY)
+				  	  	  $$ = CHAR_TYPE;
+			  	  	  else if (currSymbol->type == INT_ARRAY)
+				  	  	  $$ = INT_TYPE;
+			  	  } else {
+			  	  	  $$ = currSymbol->type;
+			  	  }
 			  }
 			}
 			| '(' expr ')'	{ $$ = $2; }
@@ -620,6 +650,7 @@ multiFuncOpt: '('')'
 			}
 			| '(' initParam args multiExprOpt ')'
 			{
+			  // TODO Push function call
 			  Symbol *currSymbol = recallGlobal(_currID);
 
 			  if (currSymbol)
@@ -634,6 +665,7 @@ multiFuncOpt: '('')'
 			  }
 			  
 			  $$ = FALSE;
+			  // TODO Pop function call
 			}
 			| '['
 			{
@@ -705,6 +737,43 @@ main() {
 void typeError(char *message) {
 	fprintf(stderr, "TYPE ERROR: line %d: %s\n", yylineno, message);
 	// TODO turn code generation off
+}
+
+
+FunctionCall *pushFunctionCall(Symbol *function) {
+	FunctionCall *toInsert = NULL;
+	
+	if (!(toInsert = malloc(sizeof(FunctionCall))))
+		ERROR("", __LINE__, TRUE);					// out of memory
+	
+	if (!(toInsert->identifier = strdup(function->identifier)))
+		ERROR("", __LINE__, TRUE);					// out of memory
+	
+	toInsert->currParam = function->parameterListHead;
+	
+	toInsert->below = _callStack;
+	_callStack = toInsert;
+	
+	return toInsert;
+}
+
+FunctionCall *peekFunctionCall() {
+	if (!_callStack)
+		ERROR("PeekFunctionCall called on empty stack.", __LINE__, FALSE);
+	
+	return _callStack;
+}
+
+void popFunctionCall() {
+	if (!_callStack)
+		ERROR("PopFunctionCall called on empty stack.", __LINE__, FALSE);
+	
+	FunctionCall *newTop = _callStack->below;
+	
+	free(_callStack->identifier);
+	free(_callStack);
+	
+	_callStack = newTop;
 }
 
 yyerror(char* errorMessage) {
