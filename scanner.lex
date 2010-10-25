@@ -33,8 +33,7 @@ catchAll		[\x00-\x7E]
 <COMMENT>"*/"		{ BEGIN(INITIAL); }
 <COMMENT>([^*]|\x0A)+|.
 <COMMENT><<EOF>>	{ fprintf(stderr, 
-							"ERROR #%d: Unexpected EOF inside comment\n",
-							++errorCount);
+							"SYNTAX ERROR: Unexpected EOF inside comment\n");
  					  exit(1);
 					}
 
