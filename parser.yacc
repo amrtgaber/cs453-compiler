@@ -26,7 +26,7 @@ char _returnedValue = FALSE;
 
 %start program
 
-%type	<int>	expr multiFuncOpt
+%type	<int>	expr multiFuncOpt exprOpt
 
 %token ID INTCON CHARCON STRCON CHAR INT VOID IF ELSE WHILE	FOR	RETURN EXTERN
 			UMINUS DBLEQ NOTEQ LTEQ GTEQ LOGICAND LOGICOR OTHER
@@ -292,6 +292,10 @@ statement:	  IF '(' expr ')' statement
 				  typeError("conditional in while loop must be a boolean");
 			}
 			| FOR '(' assgOpt ';' exprOpt ';' assgOpt ')' statement
+			{
+			  if ($5 != BOOLEAN)
+				  typeError("conditional in for loop must be a boolean");
+			}
 			| RETURN expr ';'
 			{
 			  Symbol *currSymbol = recallGlobal(_currFID);
@@ -300,6 +304,8 @@ statement:	  IF '(' expr ')' statement
 				  typeError("unexpected return statement");
 			  } else {
 				  if (currSymbol->type != $2)
+				      if ((currSymbol->type != INT || currSymbol->type != CHAR)
+						  && ($2 != INT || $2 != CHAR))
 					typeError(sprintf("return type for function %s does not match declared type",
 						_currFID));
 			  	  else
@@ -320,7 +326,35 @@ statement:	  IF '(' expr ')' statement
 			}
 			| assignment ';'
 			| ID '('')'
-			| ID '(' expr multiExprOpt ')' ';'
+			{
+			  _currID = $1;
+			  Symbol *currSymbol = recallGlobal(_currID);
+			  
+			  if (currSymbol) {
+			      if (!currSymbol->parameterListHead)
+				      typeError(sprintf("%s is not a function", _currID));
+			
+			      else if (currSymbol->parameterListHead->type != VOID)
+			          typeError(sprintf("function %s takes non-VOID arguments",
+					      _currID));
+				  
+				  if (currSymbol->type != VOID)
+				      typeError(sprintf("function %s must return VOID to be used as a statement",
+						  _currID));
+			  }
+			}
+			| ID { _currID = $1; } '(' initParam args multiExprOpt ')' ';'
+			{
+			  Symbol *currSymbol = recallGlobal(_currID);
+
+			  if (currSymbol)
+			      if (currSymbol->functionType == NON_FUNCTION)
+			          typeError(sprintf("%s is not a function", _currID));
+			
+			  if (_currParam)
+				  typeError(sprintf("more arguments expected for function %s",
+					  _currID));
+			}
 			| '{' statementOpt '}'
 			| ';'
 
@@ -340,10 +374,34 @@ assignment:	  ID '=' expr
 			  if (!currSymbol) {
 				  typeError(sprintf("%s undefined", _currID));
 		  	  } else {
-				  if (currSymbol->type != expr)
+				  if (currSymbol->type != $3) {
 					  if ((currSymbol->type != INT || currSymbol->type != CHAR)
-						  && (expr != INT && expr != CHAR))
+						  && ($3 != INT || $3 != CHAR))
+						typeError(sprintf("incompatible types for assignment of %s",
+						    _currID));
+				  }
+			  }
+			}
 			| ID '[' expr ']' '=' expr
+			{
+			  _currID = $1;
+			  Symbol *currSymbol = recall(_currID);
+			
+			  if (!currSymbol) {
+				  typeError(sprintf("%s undefined", _currID));
+		  	  } else {
+				  if (currSymbol->type != INT_ARRAY && currSymbol->type != CHAR_ARRAY)
+					  typeError(sprintf("%s must be an ARRAY to be indexed", _currID));
+				  
+				  if ($3 != INT && $3 != CHAR)
+					  typeError(sprintf("ARRAY index for %s must be INT or CHAR",
+				      	  _currID));
+				  
+				  if ($6 != INT && $6 != CHAR)  
+						typeError(sprintf("incompatible types for assignment of %s",
+						    _currID));
+			  }
+			}
 			;
 
 assgOpt:	  assignment
@@ -455,6 +513,10 @@ expr:		  '-' expr %prec UMINUS
 			  if (!currSymbol) {
 				  typeError(sprintf("%s undefined", _currID));
 				  $$ = -1;
+			  } else if (currSymbol->functionType != NON_FUNCTION) {
+				  if (currSymbol->type == VOID)
+					  typeError(sprintf("void function %s in expression", _currID));
+					  $$ = -1;
 			  } else {
 				  if ($3) {
 				  	  if (currSymbol->type == CHAR_ARRAY)
@@ -536,8 +598,8 @@ args:		  expr
 			}
 			;
 
-exprOpt:	  expr
-			| /* empty */
+exprOpt:	  expr { $$ = $1; }
+			| /* empty */ { $$ = BOOLEAN; }
 			;
 
 multiExprOpt: multiExprOpt ',' args
@@ -548,7 +610,9 @@ multiExprOpt: multiExprOpt ',' args
 
 main() {
 	pushSymbolTable();						// initialize global symbol table
-	return yyparse();
+	yyparse();
+	popSymbolTable();
+	return 0;
 }
 
 /* Function: typeError
