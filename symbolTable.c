@@ -1,7 +1,7 @@
 /* File: symbalTable.c 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 22/10/2010
+ * Last Modified: 24/10/2010
  * Purpose: Symbol table for use with the C-- compiler.
  */
 
@@ -212,13 +212,13 @@ void popSymbolTable() {
 
 /* Function: printSymbolTable
  * Parameters: none
- * Description: Prints the symbol table to the screen
+ * Description: Prints the symbol table to the screen.
  * Returns: none
  * Preconditions: The stack must not be empty.
  */
 void printSymbolTable() {
 	if (!_stack)
-		ERROR("Recall called on empty stack.", __LINE__, FALSE);
+		ERROR("PrintSymbolTable called on empty stack.", __LINE__, FALSE);
 
 	Symbol *currSymbol = NULL;
 	SymbolTable *currTable = NULL;
@@ -240,6 +240,12 @@ void printSymbolTable() {
 	}
 }
 
+/* Function: typeAsString
+ * Parameters: Type type
+ * Description: Converts the enum Type to a string.
+ * Returns: Returns the given type as a string.
+ * Preconditions: none
+ */
 char *typeAsString(Type type) {
 	if (type == CHAR_TYPE)
 		return "CHAR";
@@ -257,6 +263,12 @@ char *typeAsString(Type type) {
 	return "UNKNOWN";
 }
 
+/* Function: functionTypeAsString
+ * Parameters: FunctionType functionType
+ * Description: Converts the enum FunctionType to a string.
+ * Returns: Returns the given functionType as a string.
+ * Preconditions: none
+ */
 char *functionTypeAsString(FunctionType functionType) {
 	if (functionType == EXTERN_TYPE)
 		return "EXTERN";
@@ -270,6 +282,12 @@ char *functionTypeAsString(FunctionType functionType) {
 	return "UNKNOWN";
 }
 
+/* Function: printParamList
+ * Parameters: Parameter *parameterListHead
+ * Description: Prints the given parameter list to the screen.
+ * Returns: none
+ * Preconditions: none
+ */
 void printParamList(Parameter *parameterListHead) {
 	if (!parameterListHead) {
 		printf("NONE");
