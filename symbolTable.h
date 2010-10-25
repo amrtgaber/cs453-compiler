@@ -1,7 +1,7 @@
 /* File: symbalTable.h 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 22/10/2010
+ * Last Modified: 24/10/2010
  * Purpose: Header file for symbolTable.c.
  */
 
@@ -139,16 +139,34 @@ void popSymbolTable();
 
 /* Function: printSymbolTable
  * Parameters: none
- * Description: Prints the symbol table to the screen
+ * Description: Prints the symbol table to the screen.
  * Returns: none
  * Preconditions: The stack must not be empty.
  */
 void printSymbolTable();
 
+/* Function: typeAsString
+ * Parameters: Type type
+ * Description: Converts the enum Type to a string.
+ * Returns: Returns the given type as a string.
+ * Preconditions: none
+ */
 char *typeAsString(Type type);
 
+/* Function: functionTypeAsString
+ * Parameters: FunctionType functionType
+ * Description: Converts the enum FunctionType to a string.
+ * Returns: Returns the given functionType as a string.
+ * Preconditions: none
+ */
 char *functionTypeAsString(FunctionType functionType);
 
+/* Function: printParamList
+ * Parameters: Parameter *parameterListHead
+ * Description: Prints the given parameter list to the screen.
+ * Returns: none
+ * Preconditions: none
+ */
 void printParamList(Parameter *parameterListHead);
 
 #endif

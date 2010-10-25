@@ -1,7 +1,7 @@
 /* File: parser.yacc 
  * Author: Amr Gaber
  * Created: 24/9/2010
- * Last Modified: 20/10/2010
+ * Last Modified: 24/10/2010
  * Purpose: Parser for the C-- compiler. Used with scanner.lex and makefile to
  * 				construct the C-- compiler.
  */
@@ -99,7 +99,7 @@ makeProt:	{
 				      prevDcl->functionType = PROTOTYPE;
 			  }
 			
-			printSymbolTable();  
+ 
 			
 			  popSymbolTable();
 			}
@@ -242,10 +242,12 @@ arrayTypeOpt: type ID
 						  else
 							  typeError("INT_ARRAY does not match previous declaration");
 					  } else {
-						  insert(_currID, _currType);
+						  Symbol *currSymbol = insert(_currID, _currType);
+						  currSymbol->functionType = NON_FUNCTION;
 					  }
 			  	  } else {
-				  	  addParameter(_currID, _currType, currentFunction);
+				  	  Symbol *currSymbol = addParameter(_currID, _currType, currentFunction);
+					  currSymbol->functionType = NON_FUNCTION;
 			  	  }
 			  }
 			
@@ -298,10 +300,12 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  typeError(_errorMessage);
 			  }
 					
+			  printSymbolTable();
+					
 			  popSymbolTable();
 			}
 			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
-				  statementOpt '}' { popSymbolTable(); }
+				  statementOpt '}' { printSymbolTable(); popSymbolTable(); }
 			;
 
 multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
@@ -339,15 +343,16 @@ statement:	  IF '(' expr ')' statement
 			  if (!currSymbol) {
 				  typeError("unexpected return statement");
 			  } else {
-				  if (currSymbol->type != $2)
+				  if (currSymbol->type != $2) {
 				      if ((currSymbol->type != INT_TYPE || currSymbol->type != CHAR_TYPE)
 						  && ($2 != INT_TYPE || $2 != CHAR_TYPE)) {
 						  	sprintf(_errorMessage, "return type for function %s does not match declared type",
 								_currFID);
 						  typeError(_errorMessage);
 					  }
-			  	  else
+			  	  } else {
 					  _returnedValue = TRUE;
+				  }
 			  }
 			}
 			| RETURN ';'
@@ -425,8 +430,8 @@ assignment:	  storeID '=' expr
 				  typeError(_errorMessage);
 		  	  } else {
 				  if (currSymbol->type != $3) {
-					  if ((currSymbol->type != INT_TYPE || currSymbol->type != CHAR_TYPE)
-						  && ($3 != INT_TYPE || $3 != CHAR_TYPE)) {
+					  if ((currSymbol->type != INT_TYPE && currSymbol->type != CHAR_TYPE)
+						  && ($3 != INT_TYPE && $3 != CHAR_TYPE)) {
 						sprintf(_errorMessage, "incompatible types for assignment of %s",
 							_currID);
 						typeError(_errorMessage);
@@ -630,7 +635,7 @@ multiFuncOpt: '('')'
 			  
 			  $$ = FALSE;
 			}
-			| '[' expr ']'
+			| '['
 			{
 			  Symbol *currSymbol = recallGlobal(_currID);
 
@@ -640,7 +645,10 @@ multiFuncOpt: '('')'
 						  _currID);
 					  typeError(_errorMessage);
 				  }
-				  if ($2 != INT_TYPE && $2 != CHAR_TYPE) {
+			}
+			  expr ']'
+			{
+			  	if ($3 != INT_TYPE && $3 != CHAR_TYPE) {
 					  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
 						  _currID);
 				  	  typeError(_errorMessage);
@@ -662,9 +670,7 @@ args:		  expr
 				      typeError(_errorMessage);
 				  }
 		  	      else if (_currParam && _currParam->type != $1) {
-					  sprintf(_errorMessage, "type mismatch in arguments to function %s",
-						  _currID);
-			  	      typeError(_errorMessage);
+			  	      typeError("type mismatch in arguments to function");
 				  }
 			  }
 		  	  
