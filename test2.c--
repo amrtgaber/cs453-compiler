@@ -1,0 +1,42 @@
+/* extern char permutation(char string[]);
+
+char permutationFound;
+
+int factorial(int num) {
+	if (num == 1)
+		return 1;
+	return num * factorial(num - 1);
+}
+
+int length(char string[]) {
+	char a;
+	int length;
+	
+	a = string[0];
+	length = 0;
+
+	while (a != '\0') {
+		length = length + 1;
+		a = string[length];
+	}
+	
+	return length;
+}
+
+void permute(char string[]) {
+	int i, permutations, length;
+	
+	length = length(string);
+	
+	permutations = factorial(length);
+	
+	for( i = 0; i < permutations; i = i + 1) {
+		if (permuation(string) == 'T') {
+			permutationFound = 1;
+			return;
+		} else {
+			permutationFound = 0;
+		}
+	}
+}
+*/

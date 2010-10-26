@@ -1,43 +1,9 @@
-extern char permutation(char string[]);
+/* illegal LHS-type in an assignment */
 
-char permutationFound;
+int x[10], y, z;
 
-/* computes factorial of a given number. Number must be > 0. */
-int factorial(int num) {
-	if (num == 1)
-		return 1;
-	return num * factorial(num - 1);
-}
-
-/* returns the length of the given string */
-int length(char string[]) {
-	char a;
-	int length;
-	
-	a = string[0];
-	length = 0;
-
-	while (a != '\0') {
-		length = length + 1;
-		a = string[length];
-	}
-	
-	return length;
-}
-
-void permute(char string[]) {
-	int i, permutations, length;
-	
-	length = length(string);
-	
-	permutations = factorial(length);
-	
-	for( i = 0; i < permutations; i = i + 1) {
-		if (permuation(string) == 'T') {
-			permutationFound = 1;
-			return;
-		} else {
-			permutationFound = 0;
-		}
-	}
+int foo(void)
+{
+  foo = y+z;
+  return y;
 }
