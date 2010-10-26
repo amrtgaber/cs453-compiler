@@ -361,7 +361,7 @@ statement:	  IF '(' expr ')' statement
 			  } else {
 				  if (currSymbol->type != $2) {
 				      if ((currSymbol->type != INT_TYPE && currSymbol->type != CHAR_TYPE)
-						  && ($2 != INT_TYPE && $2 != CHAR_TYPE)) {
+						  || ($2 != INT_TYPE && $2 != CHAR_TYPE)) {
 						  	sprintf(_errorMessage, "return type for function %s does not match declared type",
 								_currFID);
 						  typeError(_errorMessage);
@@ -434,14 +434,15 @@ statement:	  IF '(' expr ')' statement
 			}
 			  args multiExprOpt ')' ';'
 			{
-			  if (_callStack->currParam) {
-				  sprintf(_errorMessage, "more arguments expected for function %s",
-					  _callStack->identifier);
-				  typeError(_errorMessage);
-			  }
+			  if (_callStack) {
+			  	  if (_callStack->currParam) {
+				  	  sprintf(_errorMessage, "more arguments expected for function %s",
+					  	  _callStack->identifier);
+				  	  typeError(_errorMessage);
+			  	  }
 				
-			  if (_currStack)
-			    popFunctionCall();
+		      	  popFunctionCall();
+		      }
 			}
 			| '{' statementOpt '}'
 			| ';'
@@ -463,6 +464,12 @@ assignment:	  storeID '=' expr
 				  sprintf(_errorMessage, "%s undefined", _currID);
 				  typeError(_errorMessage);
 		  	  } else {
+				  if (currSymbol->type != INT_TYPE && currSymbol->type != CHAR_TYPE
+						|| currSymbol->functionType != NON_FUNCTION) {
+					sprintf(_errorMessage, "%s has incompatible type for assignment",
+						_currID);
+					typeError(_errorMessage);
+				}
 				  if (currSymbol->type != $3) {
 					  if ((currSymbol->type != INT_TYPE && currSymbol->type != CHAR_TYPE)
 						  && ($3 != INT_TYPE && $3 != CHAR_TYPE)) {
@@ -612,15 +619,11 @@ expr:		  '-' expr %prec UMINUS
 			  if (!currSymbol) {
 				  sprintf(_errorMessage, "%s undefined", _currID);
 				  typeError(_errorMessage);
-				  $$ = -1;
-			  } else {
-				  $$ = currSymbol->type;
 			  }
 			}
 			multiFuncOpt
 			{
-			  if ($3 != 0)
-				  $$ = $3;
+				$$ = $3;
 			}
 			| '(' expr ')'	{ $$ = $2; }
 			| INTCON	{ $$ = INT_TYPE; }
@@ -645,42 +648,40 @@ multiFuncOpt: '('')'
 			          typeError(_errorMessage);
 			      }
 				  $$ = currSymbol->type;
+			  } else {
+				  $$ = -1;
 			  }
 			}
 			| '('
 			{
-			  $$ = -1;
-				
 			  Symbol *currSymbol = recallGlobal(_currID);
 
 			  if (currSymbol) {
 			      if (currSymbol->functionType == NON_FUNCTION) {
 				      sprintf(_errorMessage, "%s is not a function", _currID);
 			          typeError(_errorMessage);
-					  $$ = currSymbol->type;
-				  } else {
-					  pushFunctionCall();
 				  }
+				  pushFunctionCall(currSymbol);
 			  }
-			}	   
-			args multiExprOpt ')'
+			}
+			  args multiExprOpt ')'
 			{
 			  if (_callStack->currParam) {
 				  sprintf(_errorMessage, "more arguments expected for function %s",
 					  _callStack->identifier);
 				  typeError(_errorMessage);
 			  }
-			  
-			  if ($$ == -1) {
+			
+			  if (!_callStack) {
+				$$ = -1;
+			  } else {
 				  $$ = (recallGlobal(_callStack->identifier))->type;
-				  popFunctionCall();
+			      popFunctionCall();
 			  }
 			}
 			| '['
 			{
-			  $$ = -1;
-			  
-			  Symbol *currSymbol = recallGlobal(_currID);
+			  Symbol *currSymbol = recall(_currID);
 
 			  if (currSymbol) {
 				  if (currSymbol->type != CHAR_ARRAY && currSymbol->type != INT_ARRAY) {
@@ -689,21 +690,45 @@ multiFuncOpt: '('')'
 					  typeError(_errorMessage);
 				  }
 				  
-			  	  if (currSymbol->type == CHAR_ARRAY)
-			  	  	  $$ = CHAR_TYPE;
-			  	  else if (currSymbol->type == INT_ARRAY)
-			  	  	  $$ = INT_TYPE;
+				  pushFunctionCall(currSymbol);
 			  }
 			}
 			  expr ']'
 			{
-			  	if ($3 != INT_TYPE && $3 != CHAR_TYPE) {
-					  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
-						  _currID);
-				  	  typeError(_errorMessage);
+			  if ($3 != INT_TYPE && $3 != CHAR_TYPE) {
+				  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
+					  _currID);
+			  	  typeError(_errorMessage);
+			  }
+			
+				if (!_callStack) {
+					$$ = -1;
+				  } else {
+					  $$ = (recall(_callStack->identifier))->type;
+					
+					  if ($$ == CHAR_ARRAY)
+						  $$ = CHAR_TYPE;
+					  else
+						  $$ = INT_TYPE;
+					
+				      popFunctionCall();
 				  }
 			}
-			| /* empty */ { $$ = 0; }
+			| /* empty */
+			{
+				Symbol *currSymbol = recall(_currID);
+				
+				if (currSymbol) {
+				    if (currSymbol->functionType != NON_FUNCTION) {
+						sprintf(_errorMessage, "expected arguments for function %s",
+							_currID);
+						typeError(_errorMessage);
+					}
+					$$ = currSymbol->type;
+				} else {
+					$$ = -1;
+				}
+			}
 			;
 
 args:		  expr
@@ -716,8 +741,9 @@ args:		  expr
 						  _callStack->identifier);
 				      typeError(_errorMessage);
 				  } else if (_callStack->currParam->type != $1) {
-					  if ((_callStack->currParam != INT && _callStack->currParam != CHAR)
-						      || ($1 != INT && $1 != CHAR))
+					  if ((_callStack->currParam->type != INT_TYPE
+					          && _callStack->currParam->type != CHAR_TYPE)
+						      || ($1 != INT_TYPE && $1 != CHAR_TYPE))
 			  	          typeError("type mismatch in arguments to function");
 				  }
 			  }
@@ -762,9 +788,7 @@ FunctionCall *pushFunctionCall(Symbol *function) {
 	if (!(toInsert = malloc(sizeof(FunctionCall))))
 		ERROR("", __LINE__, TRUE);					// out of memory
 	
-	if (!(toInsert->identifier = strdup(function->identifier)))
-		ERROR("", __LINE__, TRUE);					// out of memory
-	
+	toInsert->identifier = function->identifier;
 	toInsert->currParam = function->parameterListHead;
 	
 	toInsert->below = _callStack;
@@ -779,7 +803,6 @@ void popFunctionCall() {
 	
 	FunctionCall *newTop = _callStack->below;
 	
-	free(_callStack->identifier);
 	free(_callStack);
 	
 	_callStack = newTop;
