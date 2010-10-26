@@ -1,9 +1,41 @@
-/* illegal LHS-type in an assignment */
+extern char permutation(char string[]);
 
-int x[10], y, z;
+char permutationFound;
 
-int foo(void)
-{
-  foo = y+z;
-  return y;
+int factorial(int num) {
+	if (num == 1)
+		return 1;
+	return num * factorial(num - 1);
+}
+
+int length(char string[]) {
+	char a;
+	int length;
+	
+	a = string[0];
+	length = 0;
+
+	while (a != '\0') {
+		length = length + 1;
+		a = string[length];
+	}
+	
+	return length;
+}
+
+void permute(char string[]) {
+	int i, permutations, length;
+	
+	length = length(string);
+	
+	permutations = factorial(length);
+	
+	for( i = 0; i < permutations; i = i + 1) {
+		if (permutation(string) == 'T') {
+			permutationFound = 1;
+			return;
+		} else {
+			permutationFound = 0;
+		}
+	}
 }
