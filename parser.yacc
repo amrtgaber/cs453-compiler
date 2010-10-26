@@ -307,13 +307,21 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 					  _currFID);
 				  typeError(_errorMessage);
 			  }
-					
-			  //printSymbolTable();
+			  
+			  #ifdef DEBUG	
+			  printSymbolTable();
+			  #endif
 					
 			  popSymbolTable();
 			}
 			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
-				  statementOpt '}' { /*printSymbolTable();*/ popSymbolTable(); }
+				  statementOpt '}' 
+			{ 
+				#ifdef DEBUG
+				printSymbolTable();
+				#endif
+				
+				popSymbolTable(); }
 			;
 
 multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
@@ -426,10 +434,14 @@ statement:	  IF '(' expr ')' statement
 			}
 			  args multiExprOpt ')' ';'
 			{
-			  
-			  // TODO mimic similar rule under expr
-			  // pop function call
-			  
+			  if (_callStack->currParam) {
+				  sprintf(_errorMessage, "more arguments expected for function %s",
+					  _callStack->identifier);
+				  typeError(_errorMessage);
+			  }
+				
+			  if (_currStack)
+			    popFunctionCall();
 			}
 			| '{' statementOpt '}'
 			| ';'
@@ -595,35 +607,20 @@ expr:		  '-' expr %prec UMINUS
 			| ID 
 			{ 
 			  _currID = $1;
-			  Symbol *currSymbol = recallGlobal(_currID);
+			  Symbol *currSymbol = recall(_currID);
 			  
 			  if (!currSymbol) {
 				  sprintf(_errorMessage, "%s undefined", _currID);
 				  typeError(_errorMessage);
 				  $$ = -1;
 			  } else {
-				   if (currSymbol->functionType != NON_FUNCTION) {
-					  if (currSymbol->type == VOID_TYPE) {
-						  sprintf(_errorMessage, "void function %s in expression", _currID);
-						  typeError(_errorMessage);
-						  $$ = -1;
-					  }
-				  }
+				  $$ = currSymbol->type;
 			  }
 			}
 			multiFuncOpt
 			{
-			  // TODO currSymbol undefined here! GODDAMN IT
-			  if (!$$) {
-			  	  if ($3) {
-			  	  	  if (currSymbol->type == CHAR_ARRAY)
-				  	  	  $$ = CHAR_TYPE;
-			  	  	  else if (currSymbol->type == INT_ARRAY)
-				  	  	  $$ = INT_TYPE;
-			  	  } else {
-			  	  	  $$ = currSymbol->type;
-			  	  }
-			  }
+			  if ($3 != 0)
+				  $$ = $3;
 			}
 			| '(' expr ')'	{ $$ = $2; }
 			| INTCON	{ $$ = INT_TYPE; }
@@ -639,44 +636,64 @@ multiFuncOpt: '('')'
 			      if (!currSymbol->parameterListHead) {
 					  sprintf(_errorMessage, "%s is not a function", _currID);
 				      typeError(_errorMessage);
-			      } else if (currSymbol->parameterListHead->type != VOID_TYPE) {
+			      } else if (currSymbol->type == VOID_TYPE) {
+					  sprintf(_errorMessage, "void function %s in expression", _currID);
+					  typeError(_errorMessage);
+				  }	else if (currSymbol->parameterListHead->type != VOID_TYPE) {
 					  sprintf(_errorMessage, "function %s takes non-VOID arguments",
 						  _currID);
 			          typeError(_errorMessage);
 			      }
+				  $$ = currSymbol->type;
 			  }
-			
-			  $$ = FALSE;
 			}
-			| '(' initParam args multiExprOpt ')'
+			| '('
 			{
-			  // TODO Push function call
+			  $$ = -1;
+				
 			  Symbol *currSymbol = recallGlobal(_currID);
 
-			  if (currSymbol)
+			  if (currSymbol) {
 			      if (currSymbol->functionType == NON_FUNCTION) {
 				      sprintf(_errorMessage, "%s is not a function", _currID);
 			          typeError(_errorMessage);
+					  $$ = currSymbol->type;
+				  } else {
+					  pushFunctionCall();
 				  }
-			  if (_currParam) {
+			  }
+			}	   
+			args multiExprOpt ')'
+			{
+			  if (_callStack->currParam) {
 				  sprintf(_errorMessage, "more arguments expected for function %s",
-					  _currID);
+					  _callStack->identifier);
 				  typeError(_errorMessage);
 			  }
 			  
-			  $$ = FALSE;
-			  // TODO Pop function call
+			  if ($$ == -1) {
+				  $$ = (recallGlobal(_callStack->identifier))->type;
+				  popFunctionCall();
+			  }
 			}
 			| '['
 			{
+			  $$ = -1;
+			  
 			  Symbol *currSymbol = recallGlobal(_currID);
 
-			  if (currSymbol)
+			  if (currSymbol) {
 				  if (currSymbol->type != CHAR_ARRAY && currSymbol->type != INT_ARRAY) {
 					  sprintf(_errorMessage, "%s must be an ARRAY to be indexed",
 						  _currID);
 					  typeError(_errorMessage);
 				  }
+				  
+			  	  if (currSymbol->type == CHAR_ARRAY)
+			  	  	  $$ = CHAR_TYPE;
+			  	  else if (currSymbol->type == INT_ARRAY)
+			  	  	  $$ = INT_TYPE;
+			  }
 			}
 			  expr ']'
 			{
@@ -685,29 +702,28 @@ multiFuncOpt: '('')'
 						  _currID);
 				  	  typeError(_errorMessage);
 				  }
-				
-			  $$ = TRUE;
 			}
-			| /* empty */ { $$ = FALSE; }
+			| /* empty */ { $$ = 0; }
 			;
 
 args:		  expr
 			{
-			  Symbol *currSymbol = recallGlobal(_currID);
-
-			  if (currSymbol) {
-		  	  	  if (!_currParam && currSymbol->type != NON_FUNCTION) {
+			  Symbol *currSymbol = recall(_currID);
+				
+			  if (_callStack && _currID) {
+		  	  	  if (!_callStack->currParam) {
 					  sprintf(_errorMessage, "extra arguments passed to function %s",
-						  _currID);
+						  _callStack->identifier);
 				      typeError(_errorMessage);
-				  }
-		  	      else if (_currParam && _currParam->type != $1) {
-			  	      typeError("type mismatch in arguments to function");
+				  } else if (_callStack->currParam->type != $1) {
+					  if ((_callStack->currParam != INT && _callStack->currParam != CHAR)
+						      || ($1 != INT && $1 != CHAR))
+			  	          typeError("type mismatch in arguments to function");
 				  }
 			  }
 		  	  
-		      if (_currParam)
-			      _currParam = _currParam->next;
+		      if (_callStack->currParam)
+			      _callStack->currParam = _callStack->currParam->next;
 			}
 			;
 
@@ -755,13 +771,6 @@ FunctionCall *pushFunctionCall(Symbol *function) {
 	_callStack = toInsert;
 	
 	return toInsert;
-}
-
-FunctionCall *peekFunctionCall() {
-	if (!_callStack)
-		ERROR("PeekFunctionCall called on empty stack.", __LINE__, FALSE);
-	
-	return _callStack;
 }
 
 void popFunctionCall() {
