@@ -22,7 +22,7 @@ FunctionCall *peekFunctionCall();
 void popFunctionCall();
 
 extern int yylineno;
-extern char* yytext;
+extern char *yytext;
 char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255];
 Type _currType = -1;
 FunctionType _currFType = -1;
@@ -106,8 +106,6 @@ makeProt:	{
 				  else
 				      prevDcl->functionType = PROTOTYPE;
 			  }
-			
- 
 			
 			  popSymbolTable();
 			}
@@ -211,10 +209,9 @@ arrayTypeOpt: type ID
 			    } else {
 			  	  	if (_currParam) {
 					  	if (_currParam->type != _currType) {
-						  	if (_currType == CHAR_TYPE)
-							  	typeError("CHAR does not match previous declaration");
-						  	else
-							  	typeError("INT does not match previous declaration");
+							sprintf(_errorMessage, "%s does not match previous declaration",
+								typeAsString(_currType));
+							typeError(_errorMessage);
 						} else {
 							Symbol *currSymbol = insert(_currID, _currType);
 						    currSymbol->functionType = NON_FUNCTION;
@@ -306,6 +303,8 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  sprintf(_errorMessage, "function %s must have at least one return statement",
 					  _currFID);
 				  typeError(_errorMessage);
+			  } else {
+				  _returnedValue = FALSE;
 			  }
 			  
 			  #ifdef DEBUG	
@@ -388,7 +387,7 @@ statement:	  IF '(' expr ')' statement
 			  }
 			}
 			| assignment ';'
-			| storeID '('')'
+			| storeID '('')' ';'
 			{
 			  Symbol *currSymbol = recallGlobal(_currID);
 			  
@@ -409,7 +408,11 @@ statement:	  IF '(' expr ')' statement
 						  _currID);
 				      typeError(_errorMessage);
 				  }
+			  } else {
+				  sprintf(_errorMessage, "%s undefined", _currID);
+			      typeError(_errorMessage);
 			  }
+			
 			}
 			| storeID '('
 			{
@@ -655,6 +658,8 @@ multiFuncOpt: '('')'
 			| '('
 			{
 			  Symbol *currSymbol = recallGlobal(_currID);
+			
+			  // TODO check that function does not return void
 
 			  if (currSymbol) {
 			      if (currSymbol->functionType == NON_FUNCTION) {
@@ -666,6 +671,8 @@ multiFuncOpt: '('')'
 			}
 			  args multiExprOpt ')'
 			{
+			  // TODO check that _callStack is not null
+				
 			  if (_callStack->currParam) {
 				  sprintf(_errorMessage, "more arguments expected for function %s",
 					  _callStack->identifier);
@@ -733,9 +740,7 @@ multiFuncOpt: '('')'
 
 args:		  expr
 			{
-			  Symbol *currSymbol = recall(_currID);
-				
-			  if (_callStack && _currID) {
+			  if (_callStack) {
 		  	  	  if (!_callStack->currParam) {
 					  sprintf(_errorMessage, "extra arguments passed to function %s",
 						  _callStack->identifier);
