@@ -24,7 +24,7 @@ void popFunctionCall();
 extern int yylineno;
 extern char *yytext;
 char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255];
-Type _currType = -1;
+Type _currType = -1, _currPType = -1;
 FunctionType _currFType = -1;
 Parameter *_currParam = NULL;
 FunctionCall *_callStack = NULL;
@@ -196,7 +196,17 @@ paramTypes:   initParam VOID
 			  _currParam = NULL;
 			};
 
-arrayTypeOpt: type ID
+storePType: CHAR
+			{
+				_currPType = CHAR_TYPE;
+			}
+			| INT
+			{
+				_currPType = INT_TYPE;
+			}
+			;
+
+arrayTypeOpt: storePType ID
 			{
 			  _currID = $2;
 			
@@ -208,16 +218,16 @@ arrayTypeOpt: type ID
 			      typeError(_errorMessage);
 			    } else {
 			  	  	if (_currParam) {
-					  	if (_currParam->type != _currType) {
+					  	if (_currParam->type != _currPType) {
 							sprintf(_errorMessage, "%s does not match previous declaration",
-								typeAsString(_currType));
+								typeAsString(_currPType));
 							typeError(_errorMessage);
 						} else {
-							Symbol *currSymbol = insert(_currID, _currType);
+							Symbol *currSymbol = insert(_currID, _currPType);
 						    currSymbol->functionType = NON_FUNCTION;
 						}
 			  	 	} else {
-				  		Symbol *currSymbol = addParameter(_currID, _currType, currentFunction);
+				  		Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					    currSymbol->functionType = NON_FUNCTION;
 			  		}
 				}
@@ -225,15 +235,15 @@ arrayTypeOpt: type ID
 			  if (_currParam)
 			  	  _currParam = _currParam->next;
 			}
-			| type ID '['']'
+			| storePType ID '['']'
 			{
 			  _currID = $2;
 			  Symbol *currentFunction = recallGlobal(_currFID);
 			
-			  if (_currType == CHAR_TYPE)
-				  _currType = CHAR_ARRAY;
+			  if (_currPType == CHAR_TYPE)
+				  _currPType = CHAR_ARRAY;
 			  else
-			      _currType = INT_ARRAY;
+			      _currPType = INT_ARRAY;
 			
 			  if (recallLocal(_currID)) {
 				  sprintf(_errorMessage, "%s previously declared in this function",
@@ -241,17 +251,17 @@ arrayTypeOpt: type ID
 			      typeError(_errorMessage);
 			  } else {
 			  	  if (_currParam) {
-					  if (_currParam->type != _currType) {
-						  if (_currType == CHAR_ARRAY)
+					  if (_currParam->type != _currPType) {
+						  if (_currPType == CHAR_ARRAY)
 							  typeError("CHAR_ARRAY does not match previous declaration");
 						  else
 							  typeError("INT_ARRAY does not match previous declaration");
 					  } else {
-						  Symbol *currSymbol = insert(_currID, _currType);
+						  Symbol *currSymbol = insert(_currID, _currPType);
 						  currSymbol->functionType = NON_FUNCTION;
 					  }
 			  	  } else {
-				  	  Symbol *currSymbol = addParameter(_currID, _currType, currentFunction);
+				  	  Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					  currSymbol->functionType = NON_FUNCTION;
 			  	  }
 			  }
@@ -289,7 +299,6 @@ insertFunc:	{
 			  } else {
 				      Symbol *currFunction = insert(_currFID, _currType);
 					  currFunction->functionType = DEFINITION;
-					  currFunction->type = _currType;
 			  }
 			
 			  pushSymbolTable();
