@@ -109,8 +109,8 @@ Symbol *insert(char *identifier, Type type) {
 
 /* Function: addParameter
  * Parameters: char *identifier, Type type, Symbol *currentFunction
- * Description: Adds a parameter to the most recently inserted function then 
- *					declares it as a local variable on the local stack.
+ * Description: Adds a parameter to the given function then inserts it into the
+ *					 local symbol table.
  * Returns: The parameter that was inserted if not void. If void returns NULL.
  * Preconditions: none
  */
@@ -259,8 +259,10 @@ char *typeAsString(Type type) {
 		return "VOID";
 	if (type == BOOLEAN)
 		return "BOOLEAN";
+	if (type == UNKNOWN)
+		return "UNKNOWN";
 	
-	return "UNKNOWN";
+	return "MISSING/UNRECOGNIZED TYPE";
 }
 
 /* Function: functionTypeAsString
@@ -278,8 +280,10 @@ char *functionTypeAsString(FunctionType functionType) {
 		return "DEFINITION";
 	if (functionType == NON_FUNCTION)
 		return "NON_FUNCTION";
+	if (functionType == F_UNKNOWN)
+		return "UNKNOWN";
 	
-	return "UNKNOWN";
+	return "MISSING/UNRECOGNIZED FUNCTION TYPE";
 }
 
 /* Function: printParamList

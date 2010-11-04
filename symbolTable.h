@@ -23,7 +23,8 @@ typedef enum Type {
 	CHAR_ARRAY,
 	INT_ARRAY,
 	VOID_TYPE,
-	BOOLEAN
+	BOOLEAN,
+	UNKNOWN
 } Type;
 
 /* Enum: FunctionType
@@ -33,7 +34,8 @@ typedef enum FunctionType {
 	EXTERN_TYPE = 0xEA7FECE5,
 	PROTOTYPE,
 	DEFINITION,
-	NON_FUNCTION
+	NON_FUNCTION,
+	F_UNKNOWN
 } FunctionType;
 
 /* Union: Value
@@ -114,8 +116,8 @@ Symbol *insert(char *identifier, Type type);
 
 /* Function: addParameter
  * Parameters: char *identifier, Type type, Symbol *currentFunction
- * Description: Adds a parameter to the most recently inserted function then 
- *					declares it as a local variable on the local stack.
+ * Description: Adds a parameter to the given function then inserts it into the
+ *					 local symbol table.
  * Returns: The parameter that was inserted if not void. If void returns NULL.
  * Preconditions: none
  */
