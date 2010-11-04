@@ -10,29 +10,51 @@
 #include "symbolTable.h"
 #include "utilities.h"
 
+/************************
+ *						*
+ * 	type definitions	*
+ *						*
+ ************************/
+
+/* Struct: FunctionCall
+ * Description: FunctionCall stack node
+ */
 typedef struct FunctionCall {
 	char *identifier;
 	Parameter *currParam;
 	struct FunctionCall *below;
 } FunctionCall;
 
+
+/************************
+ *						*
+ * 		prototypes		*
+ *						*
+ ************************/
+
 void typeError(char *errorMessage);
 FunctionCall *pushFunctionCall(Symbol *function);
 FunctionCall *peekFunctionCall();
 void popFunctionCall();
 
+/************************
+ *						*
+ *	global variables	*
+ *						*
+ ************************/
+
 extern int yylineno;
 extern char *yytext;
 char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255];
-Type _currType = -1, _currPType = -1;
-FunctionType _currFType = -1;
+Type _currType = UNKNOWN, _currPType = UNKNOWN;
+FunctionType _currFType = F_UNKNOWN;
 Parameter *_currParam = NULL;
 FunctionCall *_callStack = NULL;
 %}
 
 %union {
 	int integer;
-	char* string;
+	char *string;
 }
 
 %start program
@@ -778,9 +800,9 @@ multiExprOpt: multiExprOpt ',' args
 %%
 
 main() {
-	pushSymbolTable();						// initialize global symbol table
+	pushSymbolTable();				// initialize global symbol table
 	yyparse();
-	popSymbolTable();
+	popSymbolTable();				// free global symbol table
 	return 0;
 }
 
@@ -795,7 +817,12 @@ void typeError(char *message) {
 	// TODO turn code generation off
 }
 
-
+/* Function: pushFunctionCall
+ * Parameters: Symbol *function
+ * Description: Pushes a function call onto the call stack.
+ * Returns: The function call pushed.
+ * Preconditions: The given function symbol is not NULL.
+ */
 FunctionCall *pushFunctionCall(Symbol *function) {
 	FunctionCall *toInsert = NULL;
 	
@@ -811,6 +838,12 @@ FunctionCall *pushFunctionCall(Symbol *function) {
 	return toInsert;
 }
 
+/* Function: popFunctionCall
+ * Parameters: none
+ * Description: Pops a function call from the call stack.
+ * Returns: none
+ * Preconditions: The call stack is not empty.
+ */
 void popFunctionCall() {
 	if (!_callStack)
 		ERROR("PopFunctionCall called on empty stack.", __LINE__, FALSE);
