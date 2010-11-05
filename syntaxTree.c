@@ -8,8 +8,15 @@
 #include "utilities.h"
 #include "syntaxTree.h"
 
-SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
-						SyntaxTree *left, SyntaxTree *right) {
+/* Function: createTree
+ * Parameters: Operator operation, Symbol *symbol, SyntaxNode *left,
+ *				SyntaxNode *right
+ * Description: Creates a new syntax tree node.
+ * Returns: A pointer to the created syntax tree.
+ * Preconditions: none
+ */
+SyntaxTree *createTree(Operator operation, Symbol *symbol, SyntaxTree *left,
+						SyntaxTree *right) {
 	
 	SyntaxTree *newTree = NULL;
 	
@@ -26,6 +33,12 @@ SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
 	return newTree;
 }
 
+/* Function: destroyTree
+ * Parameters: SyntaxNode *tree
+ * Description: Deallocates the given tree and all children.
+ * Returns: none
+ * Preconditions: none
+ */
 void destroyTree(SyntaxTree *tree) {
 	if (!tree)
 		return;
