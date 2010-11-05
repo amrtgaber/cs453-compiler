@@ -21,7 +21,6 @@
 
 void typeError(char *errorMessage);
 
-
 /************************
  *						*
  *	global variables	*
@@ -37,7 +36,6 @@ unsigned int _currTemp = 0, _currLabel = 0;
 Type _currType = UNKNOWN, _currPType = UNKNOWN;
 FunctionType _currFType = F_UNKNOWN;
 Parameter *_currParam = NULL;
-
 %}
 
 %union {
