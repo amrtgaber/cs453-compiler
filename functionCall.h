@@ -31,7 +31,7 @@ typedef struct FunctionCall {
  *						*
  ************************/
 
-FunctionCall *_callStack = NULL;
+extern FunctionCall *_callStack;
 
 /************************
  *						*

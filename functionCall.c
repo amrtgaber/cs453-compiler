@@ -5,6 +5,10 @@
  * Purpose: Contains functions for the function call stack.
  */
 
+#include "utilities.h"
+#include "functionCall.h"
+
+FunctionCall *_callStack = NULL;
 
 /* Function: pushFunctionCall
  * Parameters: Symbol *function
