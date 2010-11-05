@@ -8,6 +8,12 @@
 #include "utilities.h"
 #include "code.h"
 
+/* Function: createCode
+ * Parameters: Opcode opcode, Symbol *source1, Symbol *source2, Symbol *destination
+ * Description: Creates a new three address code atom.
+ * Returns: A pointer to the created three address code.
+ * Preconditions: none
+ */
 Code *createCode(Opcode opcode, Symbol *source1, Symbol *source2, Symbol *destination) {
 	
 	Code *newCode = NULL;
@@ -24,6 +30,12 @@ Code *createCode(Opcode opcode, Symbol *source1, Symbol *source2, Symbol *destin
 	return newCode;
 }
 
+/* Function: destroyCode
+ * Parameters: Code *code
+ * Description: Deallocates the given three address code and ones following.
+ * Returns: none
+ * Preconditions: none
+ */
 void destroyCode(Code *code) {
 	if (!code)
 		return;

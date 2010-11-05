@@ -60,14 +60,14 @@ typedef struct SyntaxTree {
  ************************/
 
 /* Function: createTree
- * Parameters: Operator operation, Symbol *symbol, Code *code,
- *				SyntaxNode *left, SyntaxNode *right
+ * Parameters: Operator operation, Symbol *symbol, SyntaxNode *left,
+ *				SyntaxNode *right
  * Description: Creates a new syntax tree node.
  * Returns: A pointer to the created syntax tree.
  * Preconditions: none
  */
-SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
-						SyntaxTree *left, SyntaxTree *right);
+SyntaxTree *createTree(Operator operation, Symbol *symbol, SyntaxTree *left,
+						SyntaxTree *right);
 
 /* Function: destroyTree
  * Parameters: SyntaxNode *tree
