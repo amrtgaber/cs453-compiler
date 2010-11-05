@@ -7,7 +7,10 @@
  */
 
 %{
-#include <string.h>
+#include "utilities.h"
+#include "symbolTable.h"
+#include "syntaxTree.h"
+#include "code.h"
 #include "y.tab.h"
 extern int errorCount;
 %}

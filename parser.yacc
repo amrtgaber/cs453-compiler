@@ -7,8 +7,11 @@
  */
 
 %{
-#include "symbolTable.h"
 #include "utilities.h"
+#include "symbolTable.h"
+#include "syntaxTree.h"
+#include "code.h"
+
 
 /************************
  *						*
@@ -45,7 +48,8 @@ void popFunctionCall();
 
 extern int yylineno;
 extern char *yytext;
-char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255];
+char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255],
+		_generateCode = TRUE;
 Type _currType = UNKNOWN, _currPType = UNKNOWN;
 FunctionType _currFType = F_UNKNOWN;
 Parameter *_currParam = NULL;
@@ -55,6 +59,10 @@ FunctionCall *_callStack = NULL;
 %union {
 	int integer;
 	char *string;
+	struct exprReturn {
+		Type type;
+		SyntaxTree *tree;
+	} exprReturn;
 }
 
 %start program
@@ -62,8 +70,9 @@ FunctionCall *_callStack = NULL;
 %token ID INTCON CHARCON STRCON CHAR INT VOID IF ELSE WHILE	FOR	RETURN EXTERN
 			UMINUS DBLEQ NOTEQ LTEQ GTEQ LOGICAND LOGICOR OTHER
 
-%type	<integer>	expr multiFuncOpt exprOpt
-%type 	<string>	ID storeID
+%type	<integer>		multiFuncOpt exprOpt
+%type 	<string>		ID storeID
+%type	<exprReturn>	expr
 
 %left LOGICOR
 %left LOGICAND
@@ -347,11 +356,11 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  statementOpt '}' 
 			{ 
-				#ifdef DEBUG
-				printSymbolTable();
-				#endif
-				
-				popSymbolTable(); }
+			  #ifdef DEBUG
+			  printSymbolTable();
+			  #endif
+
+			  popSymbolTable(); }
 			;
 
 multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
@@ -364,17 +373,17 @@ multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
 
 statement:	  IF '(' expr ')' statement
 			{
-			  if ($3 != BOOLEAN)
+			  if ($3.type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
 			}
 			| IF '(' expr ')' statement ELSE statement
 			{
-			  if ($3 != BOOLEAN)
+			  if ($3.type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
 			}
 			| WHILE '(' expr ')' statement
 			{
-			  if ($3 != BOOLEAN)
+			  if ($3.type != BOOLEAN)
 				  typeError("conditional in while loop must be a boolean");
 			}
 			| FOR '(' assgOpt ';' exprOpt ';' assgOpt ')' statement
@@ -389,9 +398,9 @@ statement:	  IF '(' expr ')' statement
 			  if (!currSymbol) {
 				  typeError("unexpected return statement");
 			  } else {
-				  if (currSymbol->type != $2) {
+				  if (currSymbol->type != $2.type) {
 				      if ((currSymbol->type != INT_TYPE && currSymbol->type != CHAR_TYPE)
-						  || ($2 != INT_TYPE && $2 != CHAR_TYPE)) {
+						  || ($2.type != INT_TYPE && $2.type != CHAR_TYPE)) {
 						  	sprintf(_errorMessage, "return type for function %s does not match declared type",
 								_currFID);
 						  typeError(_errorMessage);
@@ -489,6 +498,10 @@ statementOpt: statementOpt statement
 			| /* empty */
 			;
 
+exprOpt:	  expr { $$ = $1.type; }
+			| /* empty */ { $$ = BOOLEAN; }
+			;
+
 assignment:	  storeID '=' expr
 			{
 			  _currID = $1;
@@ -504,9 +517,9 @@ assignment:	  storeID '=' expr
 						_currID);
 					typeError(_errorMessage);
 				}
-				  if (currSymbol->type != $3) {
+				  if (currSymbol->type != $3.type) {
 					  if ((currSymbol->type != INT_TYPE && currSymbol->type != CHAR_TYPE)
-						  && ($3 != INT_TYPE && $3 != CHAR_TYPE)) {
+						  && ($3.type != INT_TYPE && $3.type != CHAR_TYPE)) {
 						sprintf(_errorMessage, "incompatible types for assignment of %s",
 							_currID);
 						typeError(_errorMessage);
@@ -528,13 +541,13 @@ assignment:	  storeID '=' expr
 					  typeError(_errorMessage);
 				  }
 				  
-				  if ($3 != INT_TYPE && $3 != CHAR_TYPE) {
+				  if ($3.type != INT_TYPE && $3.type != CHAR_TYPE) {
 					  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
 						  _currID);
 					  typeError(_errorMessage);
 				  }
 				  
-				  if ($6 != INT_TYPE && $6 != CHAR_TYPE)  {
+				  if ($6.type != INT_TYPE && $6.type != CHAR_TYPE)  {
 					    sprintf(_errorMessage, "incompatible types for assignment of %s",
 							_currID);
 						typeError(_errorMessage);
@@ -549,101 +562,111 @@ assgOpt:	  assignment
 
 expr:		  '-' expr %prec UMINUS
 			{
-			  if ($2 != INT_TYPE && $2 != CHAR_TYPE)
+			  if ($2.type != INT_TYPE && $2.type != CHAR_TYPE)
 				  typeError("incompatible expression for operator '-'");
 			
-			  $$ = $2;
+			  $$.type = $2.type;
 			}
 			| '!' expr
 			{
-			  if ($2 != BOOLEAN)
+			  if ($2.type != BOOLEAN)
 				  typeError("incompatible expression for operator '!'");
 			
-			  $$ = $2;
+			  $$.type = $2.type;
 			}
 			| expr '+' expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE)
+				  || ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '+'");
 			
-			  $$ = $1;
+			  $$.type = $1.type;
 			}
 			| expr '-' expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE)
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '-'");
 			
-			  $$ = $1;
+			  $$.type = $1.type;
 			}
 			| expr '*' expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '*'");
 			
-			  $$ = $1;
+			  $$.type = $1.type;
 			}
 			| expr '/' expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '/'");
 			
-			  $$ = $1;
+			  $$.type = $1.type;
 			}
 			| expr DBLEQ expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '=='");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| expr NOTEQ expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '!='");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| expr LTEQ expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '<='");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| expr '<' expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '<'");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| expr GTEQ expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '>='");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| expr '>' expr
 			{
-			  if (($1 != INT_TYPE && $1 != CHAR_TYPE) || ($3 != INT_TYPE && $3 != CHAR_TYPE))
+			  if (($1.type != INT_TYPE && $1.type != CHAR_TYPE) 
+					|| ($3.type != INT_TYPE && $3.type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '>'");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| expr LOGICAND expr
 			{
-			  if ($1 != BOOLEAN || $3 != BOOLEAN)
+			  if ($1.type != BOOLEAN || $3.type != BOOLEAN)
 				  typeError("incompatible expression for operator '&&'");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| expr LOGICOR expr
 			{
-			  if ($1 != BOOLEAN || $3 != BOOLEAN)
+			  if ($1.type != BOOLEAN || $3.type != BOOLEAN)
 				  typeError("incompatible expression for operator '||'");
 			
-			  $$ = BOOLEAN;
+			  $$.type = BOOLEAN;
 			}
 			| ID 
 			{ 
@@ -657,12 +680,12 @@ expr:		  '-' expr %prec UMINUS
 			}
 			multiFuncOpt
 			{
-				$$ = $3;
+				$$.type = $3;
 			}
-			| '(' expr ')'	{ $$ = $2; }
-			| INTCON	{ $$ = INT_TYPE; }
-			| CHARCON	{ $$ = CHAR_TYPE; }
-			| STRCON	{ $$ = CHAR_ARRAY; }
+			| '(' expr ')'	{ $$.type = $2.type; }
+			| INTCON	{ $$.type = INT_TYPE; }
+			| CHARCON	{ $$.type = CHAR_TYPE; }
+			| STRCON	{ $$.type = CHAR_ARRAY; }
 			;
 			
 multiFuncOpt: '('')'
@@ -683,39 +706,38 @@ multiFuncOpt: '('')'
 			      }
 				  $$ = currSymbol->type;
 			  } else {
-				  $$ = -1;
+				  $$ = UNKNOWN;
 			  }
 			}
 			| '('
 			{
 			  Symbol *currSymbol = recallGlobal(_currID);
-			
-			  // TODO check that function does not return void
 
 			  if (currSymbol) {
 			      if (currSymbol->functionType == NON_FUNCTION) {
 				      sprintf(_errorMessage, "%s is not a function", _currID);
 			          typeError(_errorMessage);
+				  } else if (currSymbol->type == VOID_TYPE) {
+				  	  sprintf(_errorMessage, "void function %s in expression", _currID);
+					  typeError(_errorMessage);
 				  }
 				  pushFunctionCall(currSymbol);
 			  }
 			}
 			  args multiExprOpt ')'
-			{
-			  // TODO check that _callStack is not null
-				
-			  if (_callStack->currParam) {
-				  sprintf(_errorMessage, "more arguments expected for function %s",
-					  _callStack->identifier);
-				  typeError(_errorMessage);
-			  }
-			
-			  if (!_callStack) {
-				$$ = -1;
-			  } else {
-				  $$ = (recallGlobal(_callStack->identifier))->type;
+			{ 
+			  if (_callStack) {
+			  	  if (_callStack->currParam) {
+				  	  sprintf(_errorMessage, "more arguments expected for function %s",
+					  	  _callStack->identifier);
+				  	  typeError(_errorMessage);
+			  	  }
+			  	  $$ = (recallGlobal(_callStack->identifier))->type;
 			      popFunctionCall();
+			  } else {
+			      $$ = UNKNOWN;
 			  }
+			  
 			}
 			| '['
 			{
@@ -733,39 +755,39 @@ multiFuncOpt: '('')'
 			}
 			  expr ']'
 			{
-			  if ($3 != INT_TYPE && $3 != CHAR_TYPE) {
+			  if ($3.type != INT_TYPE && $3.type != CHAR_TYPE) {
 				  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
 					  _currID);
 			  	  typeError(_errorMessage);
 			  }
 			
-				if (!_callStack) {
-					$$ = -1;
-				  } else {
-					  $$ = (recall(_callStack->identifier))->type;
+			  if (!_callStack) {
+				  $$ = UNKNOWN;
+			  } else {
+				  $$ = (recall(_callStack->identifier))->type;
 					
-					  if ($$ == CHAR_ARRAY)
-						  $$ = CHAR_TYPE;
-					  else
-						  $$ = INT_TYPE;
-					
-				      popFunctionCall();
-				  }
+				  if ($$ == CHAR_ARRAY)
+					  $$ = CHAR_TYPE;
+				  else
+					  $$ = INT_TYPE;
+				
+				  popFunctionCall();
+			  }
 			}
 			| /* empty */
 			{
-				Symbol *currSymbol = recall(_currID);
+			  Symbol *currSymbol = recall(_currID);
 				
-				if (currSymbol) {
-				    if (currSymbol->functionType != NON_FUNCTION) {
-						sprintf(_errorMessage, "expected arguments for function %s",
-							_currID);
-						typeError(_errorMessage);
-					}
-					$$ = currSymbol->type;
-				} else {
-					$$ = -1;
-				}
+			  if (currSymbol) {
+				  if (currSymbol->functionType != NON_FUNCTION) {
+					  sprintf(_errorMessage, "expected arguments for function %s",
+						  _currID);
+					  typeError(_errorMessage);
+				  }
+				  $$ = currSymbol->type;
+			  } else {
+				  $$ = UNKNOWN;
+			  }
 			}
 			;
 
@@ -776,10 +798,10 @@ args:		  expr
 					  sprintf(_errorMessage, "extra arguments passed to function %s",
 						  _callStack->identifier);
 				      typeError(_errorMessage);
-				  } else if (_callStack->currParam->type != $1) {
+				  } else if (_callStack->currParam->type != $1.type) {
 					  if ((_callStack->currParam->type != INT_TYPE
 					          && _callStack->currParam->type != CHAR_TYPE)
-						      || ($1 != INT_TYPE && $1 != CHAR_TYPE))
+						      || ($1.type != INT_TYPE && $1.type != CHAR_TYPE))
 			  	          typeError("type mismatch in arguments to function");
 				  }
 			  }
@@ -787,10 +809,6 @@ args:		  expr
 		      if (_callStack->currParam)
 			      _callStack->currParam = _callStack->currParam->next;
 			}
-			;
-
-exprOpt:	  expr { $$ = $1; }
-			| /* empty */ { $$ = BOOLEAN; }
 			;
 
 multiExprOpt: multiExprOpt ',' args
@@ -814,7 +832,7 @@ main() {
  */
 void typeError(char *message) {
 	fprintf(stderr, "TYPE ERROR: line %d: %s\n", yylineno, message);
-	// TODO turn code generation off
+	_generateCode = FALSE;
 }
 
 /* Function: pushFunctionCall
