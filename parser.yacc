@@ -59,11 +59,11 @@ FunctionCall *_callStack = NULL;
 
 %start program
 
-%type	<integer>	expr multiFuncOpt exprOpt
-%type 	<string>	ID storeID
-
 %token ID INTCON CHARCON STRCON CHAR INT VOID IF ELSE WHILE	FOR	RETURN EXTERN
 			UMINUS DBLEQ NOTEQ LTEQ GTEQ LOGICAND LOGICOR OTHER
+
+%type	<integer>	expr multiFuncOpt exprOpt
+%type 	<string>	ID storeID
 
 %left LOGICOR
 %left LOGICAND

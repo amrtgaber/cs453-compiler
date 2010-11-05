@@ -1,0 +1,79 @@
+/* File: syntaxTree.h 
+ * Author: Amr Gaber
+ * Created: 3/11/2010
+ * Last Modified: 4/11/2010
+ * Purpose: Header file for syntaxTree.c.
+ */
+
+#ifndef __SYNTAXTREE_H__
+#define __SYNTAXTREE_H__
+
+#include "symbolTable.h"
+
+/************************
+ *						*
+ * 	type definitions	* 
+ *						*
+ ************************/
+
+/* Enum: Operator
+ * Description: Enumerates the different syntax node types.
+ */
+typedef enum Operator {
+	ADD = 0xCAFEBABE,
+	SUB,
+	MULT,
+	DIV,
+	NEG,
+	EQUAL,
+	NOT_EQUAL,
+	GREATER_THAN,
+	GREATER_EQUAL,
+	LESS_THAN,
+	LESS_EQUAL,
+	AND,
+	OR,
+	ASSIGNMENT,
+	IF_OP,
+	WHILE_OP,
+	RETURN_OP,
+	SYMBOL,
+	DECLARATION,
+	STATEMENT
+} Operator;
+
+/* Struct: SyntaxTree
+ * Description: Represents a syntax tree node.
+ */
+typedef struct SyntaxTree {
+	Operator 	operation;
+	Symbol		*symbol;
+	Code 		*code;
+	struct SyntaxNode *left, *right, *elseOpt;
+} SyntaxNode;
+
+/************************
+ *						*
+ * 	exported functions	*
+ *						*
+ ************************/
+
+/* Function: createTree
+ * Parameters: Operator operation, Symbol *symbol, Code *code,
+ *				SyntaxNode *left, SyntaxNode *right
+ * Description: Creates a new syntax tree node.
+ * Returns: A pointer to the created syntax tree.
+ * Preconditions: none
+ */
+SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
+						SyntaxNode *left, SyntaxNode *right);
+
+/* Function: destroyTree
+ * Parameters: SyntaxNode *tree
+ * Description: Deallocates the given tree and all children.
+ * Returns: none
+ * Preconditions: none
+ */
+void destroyTree(SyntaxNode *tree);
+
+#endif
