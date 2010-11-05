@@ -9,7 +9,7 @@
 #include "syntaxTree.h"
 
 SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
-						SyntaxNode *left, SyntaxNode *right) {
+						SyntaxTree *left, SyntaxTree *right) {
 	
 	SyntaxTree *newTree = NULL;
 	
@@ -26,7 +26,7 @@ SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
 	return newTree;
 }
 
-void destroyTree(SyntaxNode *tree) {
+void destroyTree(SyntaxTree *tree) {
 	if (!tree)
 		return;
 	

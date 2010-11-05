@@ -9,6 +9,7 @@
 #define __SYNTAXTREE_H__
 
 #include "symbolTable.h"
+#include "code.h"
 
 /************************
  *						*
@@ -34,9 +35,9 @@ typedef enum Operator {
 	AND,
 	OR,
 	ASSIGNMENT,
-	IF_OP,
-	WHILE_OP,
-	RETURN_OP,
+	IF_TREE,
+	WHILE_TREE,
+	RETURN_TREE,
 	SYMBOL,
 	DECLARATION,
 	STATEMENT
@@ -49,8 +50,8 @@ typedef struct SyntaxTree {
 	Operator 	operation;
 	Symbol		*symbol;
 	Code 		*code;
-	struct SyntaxNode *left, *right, *elseOpt;
-} SyntaxNode;
+	struct SyntaxTree *left, *right, *elseOpt;
+} SyntaxTree;
 
 /************************
  *						*
@@ -66,7 +67,7 @@ typedef struct SyntaxTree {
  * Preconditions: none
  */
 SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
-						SyntaxNode *left, SyntaxNode *right);
+						SyntaxTree *left, SyntaxTree *right);
 
 /* Function: destroyTree
  * Parameters: SyntaxNode *tree
@@ -74,6 +75,6 @@ SyntaxTree *createTree(Operator operation, Symbol *symbol, Code *code,
  * Returns: none
  * Preconditions: none
  */
-void destroyTree(SyntaxNode *tree);
+void destroyTree(SyntaxTree *tree);
 
 #endif

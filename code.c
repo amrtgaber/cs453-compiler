@@ -8,7 +8,7 @@
 #include "utilities.h"
 #include "code.h"
 
-Code *createCode(Opcode opcode, Symbol *source1, Symbol *source2, Symbol *destination {
+Code *createCode(Opcode opcode, Symbol *source1, Symbol *source2, Symbol *destination) {
 	
 	Code *newCode = NULL;
 	
