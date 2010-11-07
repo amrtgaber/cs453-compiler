@@ -42,9 +42,8 @@ typedef enum FunctionType {
  * Description: Each symbol must have exactly one of these values.
  */
 typedef union Value {
-	int		intVal;
+	int		intVal;			// also used to store the length of arrays
 	char 	charVal;
-	char 	*string;
 } Value;
 
 /* Struct: Parameter

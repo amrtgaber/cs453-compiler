@@ -1,7 +1,7 @@
 /* File: symbalTable.c 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 5/11/2010
+ * Last Modified: 6/11/2010
  * Purpose: Symbol table for use with the C-- compiler.
  */
 
@@ -240,9 +240,6 @@ void printSymbolTable() {
 					break;
 				case INT_TYPE:
 					printf("\tValue: %d\n", currSymbol->value.intVal);
-					break;
-				case CHAR_ARRAY:
-					printf("\tValue: %s\n", currSymbol->value.string);
 					break;
 				default:
 					break;

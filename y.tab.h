@@ -90,7 +90,7 @@
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 51 "parser.yacc"
+#line 52 "parser.yacc"
 {
 	char character;
 	int integer;

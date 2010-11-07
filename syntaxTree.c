@@ -94,10 +94,6 @@ void printSyntaxTree(SyntaxTree *tree, int tabs) {
 				printTabs(tabs);
 				printf("Value: %d\n", tree->symbol->value.intVal);
 				break;
-			case CHAR_ARRAY:
-				printTabs(tabs);
-				printf("Value: %s\n", tree->symbol->value.string);
-				break;
 			default:
 				break;
 		}
@@ -170,6 +166,8 @@ char *operatorAsString(Operator operation){
 			return "RETURN_TREE";
 		case SYMBOL:
 			return "SYMBOL";
+		case PARAMETER_TREE:
+			return "PARAMETER";
 		case DECLARATION:
 			return "DECLARATION";
 		case STATEMENT:

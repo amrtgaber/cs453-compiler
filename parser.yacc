@@ -23,6 +23,7 @@ void 	typeError(char *errorMessage),
 		generateNewTempID(),
 		generateNewLabelID(),
 		declareGlobalVariables(SyntaxTree *tree);
+Code	*constructCode(SyntaxTree *tree);
 
 /************************
  *						*
@@ -93,7 +94,9 @@ program:	  program declaration ';'
 
 declaration:  type varDcl multiVarDcl
 			{
+			  printf(".data\n\n");
 			  declareGlobalVariables(createTree(DECLARATION, NULL, $2, $3));
+			  printf("\n");
 			}
 			| storeExtern type storeFID '(' insertFunc paramTypes ')'
 			      multiProtDcl makeProt // TODO reset _currFType
@@ -182,6 +185,7 @@ varDcl:	  	  ID
 			  } else {
 			  	  Symbol *currSymbol = insert(_currID, _currType);
 			      currSymbol->functionType = NON_FUNCTION;
+				  currSymbol->value.intVal = $3;
 				  $$ = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  }
 			
@@ -266,12 +270,12 @@ arrayTypeOpt: storePType ID
 						} else {
 							Symbol *currSymbol = insert(_currID, _currPType);
 						    currSymbol->functionType = NON_FUNCTION;
-							$$ = createTree(SYMBOL, currSymbol, NULL, NULL);
+							$$ = createTree(DECLARATION, currSymbol, NULL, NULL);
 						}
 			  	 	} else {
 				  		Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					    currSymbol->functionType = NON_FUNCTION;
-						$$ = createTree(SYMBOL, currSymbol, NULL, NULL);
+						$$ = createTree(DECLARATION, currSymbol, NULL, NULL);
 			  		}
 				}
 				
@@ -305,12 +309,12 @@ arrayTypeOpt: storePType ID
 					  } else {
 						  Symbol *currSymbol = insert(_currID, _currPType);
 						  currSymbol->functionType = NON_FUNCTION;
-						  $$ = createTree(SYMBOL, currSymbol, NULL, NULL);
+						  $$ = createTree(DECLARATION, currSymbol, NULL, NULL);
 					  }
 			  	  } else {
 				  	  Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					  currSymbol->functionType = NON_FUNCTION;
-					  $$ = createTree(SYMBOL, currSymbol, NULL, NULL);
+					  $$ = createTree(DECLARATION, currSymbol, NULL, NULL);
 			  	  }
 			  }
 			
@@ -365,11 +369,26 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  }
 			  
 			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
-			  //printf("\nSYNTAX TREE:\n\n");
-			  //printSyntaxTree(function, 0);
+			  
+			  printf(".text\n\n");
+			  printf("%s:\n", _currFID);
+			  
+			  // TODO function prologue
 			
-			  #ifdef DEBUG
-			  printSymbolTable();
+			  Code *code = constructCode(function);
+			
+			  printf("\nTHREE ADDRESS CODE:\n\n");
+			  printCode(code);
+			
+			  // TODO function epilogue
+			
+			  #if defined(DEBUG_SYNTAX) || defined(DEBUG_ALL)
+			  	  printf("\nSYNTAX TREE:\n\n");
+			  	  printSyntaxTree(function, 0);
+			  #endif
+			
+			  #if defined(DEBUG_SYMBOLS) || defined(DEBUG_ALL)
+			  	  printSymbolTable();
 			  #endif
 					
 			  popSymbolTable();
@@ -378,11 +397,26 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  statementOpt '}' 
 			{ 
 			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
-			  //printf("\nSYNTAX TREE:\n\n");
-			  //printSyntaxTree(function, 0);
+			  
+			  printf(".text\n\n");
+			  printf("%s:\n", _currFID);
 			
-			  #ifdef DEBUG
-			  printSymbolTable();
+			  // TODO function prologue
+
+			  Code *code = constructCode(function);
+			  
+			  printf("\nTHREE ADDRESS CODE:\n\n");
+			  printCode(code);
+			
+			  // TODO function epilogue
+			
+			  #if defined(DEBUG_SYNTAX) || defined(DEBUG_ALL)
+			  	  printf("\nSYNTAX TREE:\n\n");
+			  	  printSyntaxTree(function, 0);
+			  #endif
+			
+			  #if defined(DEBUG_SYMBOLS) || defined(DEBUG_ALL)
+			  	  printSymbolTable();
 			  #endif
 
 			  popSymbolTable(); }
@@ -746,7 +780,7 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = CHAR_ARRAY;
 			  generateNewTempID();
 			  Symbol *newSymbol = insert(_tempID, CHAR_ARRAY);
-			  newSymbol->value.string = $1;
+			  // TODO store length of string
 			  newSymbol->functionType = NON_FUNCTION;
 			  $$.tree = createTree(SYMBOL, newSymbol, NULL, NULL);
 			}
@@ -872,9 +906,11 @@ args:		  expr
 						  $$ = NULL;
 					  } else {
 						  $$ = $1.tree;
+						  $$->operation = PARAMETER_TREE;
 					  }
 				  } else {
 					  $$ = $1.tree;
+					  $$->operation = PARAMETER_TREE;
 				  }
 			  } else {
 				  $$ = NULL;
@@ -923,8 +959,157 @@ yywrap() {
 	return 1;
 }
 
+/* Function: declareGlobalVariables
+ * Parameters: SyntaxTree *tree
+ * Description: Converts global declarations to assembly code.
+ * Returns: none
+ * Preconditions: none
+ */
 void declareGlobalVariables(SyntaxTree *tree) {
+	if (!tree)
+		return;
+
+	Symbol *currSymbol = tree->symbol;
 	
+	if (!currSymbol) {
+		declareGlobalVariables(tree->left);
+		declareGlobalVariables(tree->right);
+		return;
+	}
+
+	printf("%s:\n", currSymbol->identifier);
+	
+	switch (currSymbol->type) {
+		case CHAR_TYPE:
+			printf("\t.byte '\\0'\n", currSymbol->value.charVal);
+			break;
+		case INT_TYPE:
+			printf("\t.word 0\n", currSymbol->value.intVal);
+			break;
+		case CHAR_ARRAY:
+			printf("\t.space %d\n", currSymbol->value.intVal);
+			break;
+		case INT_ARRAY:
+			printf("\t.space %d\n", (4 * currSymbol->value.intVal));
+			break;
+		default:
+			break;
+	}
+	
+	declareGlobalVariables(tree->left);
+	declareGlobalVariables(tree->right);
+}
+
+/* Function: constructCode
+ * Parameters: SyntaxTree *tree
+ * Description: Converts the given syntax tree into a three address code list.
+ * Returns: The head of a code list.
+ * Preconditions: none
+ */
+Code *constructCode(SyntaxTree *tree) {
+	if (!tree)
+		return;
+	
+	constructCode(tree->left);
+	constructCode(tree->right);
+	
+	switch (tree->operation) {
+		/*case ADD:
+			break;
+	 	case SUB:
+			break;
+		case MULT:
+			break;
+		case DIV:
+			break;
+		case NEG:
+			break;
+		case EQUAL:
+			break;
+		case NOT_EQUAL:
+			break;
+		case GREATER_THAN:
+			break;
+		case GREATER_EQUAL:
+			break;
+		case LESS_THAN:
+			break;
+		case LESS_EQUAL:
+			break;
+		case AND:
+			break;
+		case OR:
+			break;
+		case IF_TREE:
+			break;
+		case WHILE_TREE:
+			break;
+		case RETURN_TREE:
+			break;*/
+		case ASSIGNMENT:
+			tree->code = createCode(ASSIGNMENT_OP, tree->right->symbol, NULL, tree->left->symbol);
+			break;
+		case STATEMENT:
+			if (tree->right) {
+				tree->code = tree->right->code;
+			
+				Code *tail = tree->code;
+			
+				while (tail->next)
+					tail = tail->next;
+			
+				tail->next = tree->left->code;
+			} else {
+				tree->code = tree->left->code;
+			}
+			break;
+		case FUNCTION_CALL:
+			if (tree->left) {
+				tree->code = tree->left->code;
+			
+				Code *tail = tree->code;
+			
+				while (tail->next)
+					tail = tail->next;
+			
+				tail->next = createCode(ENTER, tree->symbol, NULL, NULL);
+			} else {
+				tree->code = createCode(ENTER, tree->symbol, NULL, NULL);
+			}
+			break;
+		case PARAMETER_TREE:
+			tree->code = createCode(PUSH_PARAM, tree->symbol, NULL, NULL);
+			
+			if (tree->left)
+				tree->code->next = tree->left->code;
+			break;
+		case DECLARATION:
+			tree->code = createCode(DECLARATION_OP, tree->symbol, NULL, NULL);
+			
+			if (tree->left)
+				tree->code->next = tree->left->code;
+			break;
+		case SYMBOL:
+			break;
+		case FUNCTION_ROOT:
+			if (tree->left) {
+				tree->code = tree->left->code;
+
+				Code *tail = tree->code;
+
+				while (tail->next)
+					tail = tail->next;
+
+				tail->next = tree->right->code;
+			} else {
+				tree->code = tree->right->code;
+			}
+			break;
+		default:
+			break;
+	}
+	
+	return tree->code;
 }
 
 /* Function: typeError
