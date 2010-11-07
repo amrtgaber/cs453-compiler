@@ -1,7 +1,7 @@
 /* File: scanner.lex
  * Author: Amr Gaber
  * Created: 24/9/2010
- * Last Modified: 23/10/2010
+ * Last Modified: 5/11/2010
  * Purpose: Tokenizer for parser.yacc. Used with the makefile to construct
  * 				the C-- compiler.
  */
@@ -73,8 +73,8 @@ catchAll		[\x00-\x7E]
 ">"				return(yytext[0]);
 {wspace}		;
 {identifier}	{ yylval.string = strdup(yytext); } return(ID);
-{intCon}		{ yylval.string = strdup(yytext); } return(INTCON);
-{charCon}		{ yylval.string = strdup(yytext); } return(CHARCON);
+{intCon}		{ yylval.integer = atoi(yytext); } return(INTCON);
+{charCon}		{ yylval.character = yytext[0]; } return(CHARCON);
 {strCon}		{ yylval.string = strdup(yytext); } return(STRCON);
 {catchAll}		return(OTHER);
 

@@ -1,7 +1,7 @@
 /* File: parser.yacc 
  * Author: Amr Gaber
  * Created: 24/9/2010
- * Last Modified: 25/10/2010
+ * Last Modified: 6/11/2010
  * Purpose: Parser for the C-- compiler. Used with scanner.lex and makefile to
  * 				construct the C-- compiler.
  */
@@ -19,7 +19,10 @@
  *						*
  ************************/
 
-void typeError(char *errorMessage);
+void 	typeError(char *errorMessage),
+		generateNewTempID(),
+		generateNewLabelID(),
+		declareGlobalVariables(SyntaxTree *tree);
 
 /************************
  *						*
@@ -29,18 +32,27 @@ void typeError(char *errorMessage);
 
 extern int yylineno;
 extern char *yytext;
-extern FunctionCall *_callStack;
-char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255],
-		_generateCode = TRUE;
-unsigned int _currTemp = 0, _currLabel = 0;
-Type _currType = UNKNOWN, _currPType = UNKNOWN;
+extern FunctionCall	*_callStack;
+char	*_currID = NULL,
+		*_currFID = NULL,
+		_returnedValue = FALSE,
+		_generateCode = TRUE,
+		_errorMessage[255],
+		_tempID[15],				// up to 10 billion temps > unsigned int max
+		_labelID[16];				// up to 10 billion labels > unsigned int max
+unsigned int	_tempNum = 0,
+				_labelNum = 0;
+Type	_currType = UNKNOWN,
+		_currPType = UNKNOWN;
 FunctionType _currFType = F_UNKNOWN;
 Parameter *_currParam = NULL;
 %}
 
 %union {
+	char character;
 	int integer;
 	char *string;
+	SyntaxTree *tree;
 	struct exprReturn {
 		Type type;
 		SyntaxTree *tree;
@@ -52,9 +64,12 @@ Parameter *_currParam = NULL;
 %token ID INTCON CHARCON STRCON CHAR INT VOID IF ELSE WHILE	FOR	RETURN EXTERN
 			UMINUS DBLEQ NOTEQ LTEQ GTEQ LOGICAND LOGICOR OTHER
 
-%type	<integer>		multiFuncOpt exprOpt
-%type 	<string>		ID storeID
-%type	<exprReturn>	expr
+%type	<character>		CHARCON
+%type	<integer>		exprOpt INTCON
+%type 	<string>		ID storeID STRCON
+%type 	<tree>			assignment statement statementOpt paramTypes arrayTypeOpt
+							args varDcl multiVarDcl
+%type	<exprReturn>	expr multiFuncOpt
 
 %left LOGICOR
 %left LOGICAND
@@ -71,17 +86,20 @@ program:	  program declaration ';'
 			
 			/* error productions */
 			| program declaration error { yyerrok; } /* missing semicolon */
-			| error ';' { yyerrok; }
+			| error ';' { yyerrok; } 
 
 			| /* empty */
 	    	;
 
 declaration:  type varDcl multiVarDcl
-			| storeExtern type storeFID '(' insertFunc paramTypes ')' 
-			      multiProtDcl makeProt
+			{
+			  declareGlobalVariables(createTree(DECLARATION, NULL, $2, $3));
+			}
+			| storeExtern type storeFID '(' insertFunc paramTypes ')'
+			      multiProtDcl makeProt // TODO reset _currFType
 			| type storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt
 			| storeExtern storeVoid storeFID '(' insertFunc paramTypes ')'
-			      multiProtDcl makeProt
+			      multiProtDcl makeProt // TODO reset _currFType
 			| storeVoid storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt
 			;
 			
@@ -128,8 +146,8 @@ multiProtDcl: multiProtDcl ',' makeProt storeFID '(' insertFunc paramTypes ')'
 			| /* empty */
 			;
 
-multiVarDcl:  multiVarDcl ',' varDcl
-			| /* empty */
+multiVarDcl:  multiVarDcl ',' varDcl { $$ = createTree(DECLARATION, NULL, $3, $1); }
+			| /* empty */ { $$ = NULL; }
 			;
 
 varDcl:	  	  ID
@@ -140,9 +158,11 @@ varDcl:	  	  ID
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  $$ = NULL;
 			  } else {
 			  	  Symbol *currSymbol = insert(_currID, _currType);
 				  currSymbol->functionType = NON_FUNCTION;
+				  $$ = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  }
 			}
 			| ID '[' INTCON ']'
@@ -158,9 +178,11 @@ varDcl:	  	  ID
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  $$ = NULL;
 			  } else {
 			  	  Symbol *currSymbol = insert(_currID, _currType);
 			      currSymbol->functionType = NON_FUNCTION;
+				  $$ = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  }
 			
 			  if (_currType == CHAR_ARRAY)
@@ -188,7 +210,7 @@ initParam:	{
 				
 			};
 
-paramTypes:   initParam VOID 
+paramTypes:   initParam VOID
 			{
 			  Symbol *currentFunction = recallGlobal(_currFID);
 			
@@ -200,6 +222,8 @@ paramTypes:   initParam VOID
 			  }
 
 			  _currParam = NULL;
+			  
+			  $$ = NULL;
 			}
 			| initParam arrayTypeOpt multiParam
 			{
@@ -207,6 +231,8 @@ paramTypes:   initParam VOID
 				  typeError("Type mismatch: missing previously declared types");
 			  
 			  _currParam = NULL;
+			
+			  $$ = $2;
 			};
 
 storePType: CHAR
@@ -229,19 +255,23 @@ arrayTypeOpt: storePType ID
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  $$ = NULL;
 			    } else {
 			  	  	if (_currParam) {
 					  	if (_currParam->type != _currPType) {
 							sprintf(_errorMessage, "%s does not match previous declaration",
 								typeAsString(_currPType));
 							typeError(_errorMessage);
+							$$ = NULL;
 						} else {
 							Symbol *currSymbol = insert(_currID, _currPType);
 						    currSymbol->functionType = NON_FUNCTION;
+							$$ = createTree(SYMBOL, currSymbol, NULL, NULL);
 						}
 			  	 	} else {
 				  		Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					    currSymbol->functionType = NON_FUNCTION;
+						$$ = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  		}
 				}
 				
@@ -262,6 +292,7 @@ arrayTypeOpt: storePType ID
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  $$ = NULL;
 			  } else {
 			  	  if (_currParam) {
 					  if (_currParam->type != _currPType) {
@@ -269,13 +300,17 @@ arrayTypeOpt: storePType ID
 							  typeError("CHAR_ARRAY does not match previous declaration");
 						  else
 							  typeError("INT_ARRAY does not match previous declaration");
+						  
+						  $$ = NULL;
 					  } else {
 						  Symbol *currSymbol = insert(_currID, _currPType);
 						  currSymbol->functionType = NON_FUNCTION;
+						  $$ = createTree(SYMBOL, currSymbol, NULL, NULL);
 					  }
 			  	  } else {
 				  	  Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					  currSymbol->functionType = NON_FUNCTION;
+					  $$ = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  	  }
 			  }
 			
@@ -319,7 +354,7 @@ insertFunc:	{
 			;
 
 function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
-			  	  statementOpt '}' 
+			  	  statementOpt '}'
 			{ 
 			  if (!_returnedValue) {
 				  sprintf(_errorMessage, "function %s must have at least one return statement",
@@ -329,7 +364,11 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  _returnedValue = FALSE;
 			  }
 			  
-			  #ifdef DEBUG	
+			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
+			  //printf("\nSYNTAX TREE:\n\n");
+			  //printSyntaxTree(function, 0);
+			
+			  #ifdef DEBUG
 			  printSymbolTable();
 			  #endif
 					
@@ -338,6 +377,10 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  statementOpt '}' 
 			{ 
+			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
+			  //printf("\nSYNTAX TREE:\n\n");
+			  //printSyntaxTree(function, 0);
+			
 			  #ifdef DEBUG
 			  printSymbolTable();
 			  #endif
@@ -408,7 +451,7 @@ statement:	  IF '(' expr ')' statement
 				  }
 			  }
 			}
-			| assignment ';'
+			| assignment ';' { $$ = $1; }
 			| storeID '('')' ';'
 			{
 			  Symbol *currSymbol = recallGlobal(_currID);
@@ -430,9 +473,12 @@ statement:	  IF '(' expr ')' statement
 						  _currID);
 				      typeError(_errorMessage);
 				  }
+				  
+				  $$ = createTree(FUNCTION_CALL, currSymbol, NULL, NULL);
 			  } else {
 				  sprintf(_errorMessage, "%s undefined", _currID);
 			      typeError(_errorMessage);
+				  $$ = NULL;
 			  }
 			
 			}
@@ -466,18 +512,25 @@ statement:	  IF '(' expr ')' statement
 				  	  typeError(_errorMessage);
 			  	  }
 				
+				  $$ = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $4, NULL);
+				
 		      	  popFunctionCall();
 		      }
 			}
-			| '{' statementOpt '}'
-			| ';'
+			| '{' statementOpt '}' { $$ = $2; }
+			| ';' { $$ = NULL; }
 
 			/* error productions */
 			| error ';' { yyerrok; }
 			;
 
 statementOpt: statementOpt statement
-			| /* empty */
+			{
+			  if ($2) {
+			  	  $$ = createTree(STATEMENT, NULL, $2, $1);
+			  }
+			}
+			| /* empty */ { $$ = NULL; }
 			;
 
 exprOpt:	  expr { $$ = $1.type; }
@@ -508,6 +561,9 @@ assignment:	  storeID '=' expr
 					  }
 				  }
 			  }
+			
+			  SyntaxTree *leftHandSide = createTree(SYMBOL, currSymbol, NULL, NULL);
+			  $$ = createTree(ASSIGNMENT, NULL, leftHandSide, $3.tree);
 			}
 			| storeID '[' expr ']' '=' expr
 			{
@@ -650,8 +706,8 @@ expr:		  '-' expr %prec UMINUS
 			
 			  $$.type = BOOLEAN;
 			}
-			| ID 
-			{ 
+			| ID
+			{
 			  _currID = $1;
 			  Symbol *currSymbol = recall(_currID);
 			  
@@ -659,15 +715,41 @@ expr:		  '-' expr %prec UMINUS
 				  sprintf(_errorMessage, "%s undefined", _currID);
 				  typeError(_errorMessage);
 			  }
+				
 			}
 			multiFuncOpt
 			{
-				$$.type = $3;
+				$$.type = $3.type;
+				$$.tree = $3.tree;
 			}
 			| '(' expr ')'	{ $$.type = $2.type; }
-			| INTCON	{ $$.type = INT_TYPE; }
-			| CHARCON	{ $$.type = CHAR_TYPE; }
-			| STRCON	{ $$.type = CHAR_ARRAY; }
+			| INTCON
+			{
+			  $$.type = INT_TYPE;
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, INT_TYPE);
+			  newSymbol->value.intVal = $1;
+			  newSymbol->functionType = NON_FUNCTION;
+			  $$.tree = createTree(SYMBOL, newSymbol, NULL, NULL);
+			}
+			| CHARCON
+			{
+			  $$.type = CHAR_TYPE;
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, CHAR_TYPE);
+			  newSymbol->value.charVal = $1;
+			  newSymbol->functionType = NON_FUNCTION;
+			  $$.tree = createTree(SYMBOL, newSymbol, NULL, NULL);
+			}
+			| STRCON
+			{
+			  $$.type = CHAR_ARRAY;
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, CHAR_ARRAY);
+			  newSymbol->value.string = $1;
+			  newSymbol->functionType = NON_FUNCTION;
+			  $$.tree = createTree(SYMBOL, newSymbol, NULL, NULL);
+			}
 			;
 			
 multiFuncOpt: '('')'
@@ -686,9 +768,9 @@ multiFuncOpt: '('')'
 						  _currID);
 			          typeError(_errorMessage);
 			      }
-				  $$ = currSymbol->type;
+				  $$.type = currSymbol->type;
 			  } else {
-				  $$ = UNKNOWN;
+				  $$.type = UNKNOWN;
 			  }
 			}
 			| '('
@@ -714,10 +796,10 @@ multiFuncOpt: '('')'
 					  	  _callStack->identifier);
 				  	  typeError(_errorMessage);
 			  	  }
-			  	  $$ = (recallGlobal(_callStack->identifier))->type;
+			  	  $$.type = (recallGlobal(_callStack->identifier))->type;
 			      popFunctionCall();
 			  } else {
-			      $$ = UNKNOWN;
+			      $$.type = UNKNOWN;
 			  }
 			  
 			}
@@ -744,14 +826,14 @@ multiFuncOpt: '('')'
 			  }
 			
 			  if (!_callStack) {
-				  $$ = UNKNOWN;
+				  $$.type = UNKNOWN;
 			  } else {
-				  $$ = (recall(_callStack->identifier))->type;
+				  $$.type = (recall(_callStack->identifier))->type;
 					
-				  if ($$ == CHAR_ARRAY)
-					  $$ = CHAR_TYPE;
+				  if ($$.type == CHAR_ARRAY)
+					  $$.type = CHAR_TYPE;
 				  else
-					  $$ = INT_TYPE;
+					  $$.type = INT_TYPE;
 				
 				  popFunctionCall();
 			  }
@@ -766,9 +848,10 @@ multiFuncOpt: '('')'
 						  _currID);
 					  typeError(_errorMessage);
 				  }
-				  $$ = currSymbol->type;
+				  $$.type = currSymbol->type;
+				  $$.tree = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  } else {
-				  $$ = UNKNOWN;
+				  $$.type = UNKNOWN;
 			  }
 			}
 			;
@@ -780,12 +863,21 @@ args:		  expr
 					  sprintf(_errorMessage, "extra arguments passed to function %s",
 						  _callStack->identifier);
 				      typeError(_errorMessage);
+					  $$ = NULL;
 				  } else if (_callStack->currParam->type != $1.type) {
 					  if ((_callStack->currParam->type != INT_TYPE
 					          && _callStack->currParam->type != CHAR_TYPE)
-						      || ($1.type != INT_TYPE && $1.type != CHAR_TYPE))
+						      || ($1.type != INT_TYPE && $1.type != CHAR_TYPE)) {
 			  	          typeError("type mismatch in arguments to function");
+						  $$ = NULL;
+					  } else {
+						  $$ = $1.tree;
+					  }
+				  } else {
+					  $$ = $1.tree;
 				  }
+			  } else {
+				  $$ = NULL;
 			  }
 		  	  
 		      if (_callStack->currParam)
@@ -799,28 +891,70 @@ multiExprOpt: multiExprOpt ',' args
 
 %%
 
+/* Function: main
+ * Parameters: none
+ * Description: Program execution begins here.
+ * Returns: 0 for success, 1 if errors were found (syntactic or semantic).
+ * Preconditions: none
+ */
 main() {
 	pushSymbolTable();				// initialize global symbol table
 	yyparse();
 	popSymbolTable();				// free global symbol table
-	return 0;
+	
+	if (_generateCode)
+		return 0;					// success
+	return 1;						// failure
 }
 
-/* Function: typeError
- * Parameters: char *message
- * Description: Prints error message and turns code generation off.
+/* Function: yyError
+ * Parameters: char *errorMessage
+ * Description: Called when syntax errors are found. Prints error message and
+ *					turns code generation off.
  * Returns: void
  * Preconditions: none
  */
-void typeError(char *message) {
-	fprintf(stderr, "TYPE ERROR: line %d: %s\n", yylineno, message);
-	_generateCode = FALSE;
-}
-
 yyerror(char* errorMessage) {
 	fprintf(stderr, "SYNTAX ERROR: line %d: Near token (%s)\n", yylineno, yytext);
+	_generateCode = FALSE;
 }
 
 yywrap() {
 	return 1;
+}
+
+void declareGlobalVariables(SyntaxTree *tree) {
+	
+}
+
+/* Function: typeError
+ * Parameters: char *errorMessage
+ * Description: Called when semantic errors are found. Prints error message and
+ *					turns code generation off.
+ * Returns: void
+ * Preconditions: none
+ */
+void typeError(char *errorMessage) {
+	fprintf(stderr, "TYPE ERROR: line %d: %s\n", yylineno, errorMessage);
+	_generateCode = FALSE;
+}
+
+/* Function: generateNewTempID
+ * Parameters: none
+ * Description: Updates to a new unique temporary variable ID.
+ * Returns: none
+ * Preconditions: none
+ */
+void generateNewTempID() {
+	sprintf(_tempID, "_temp%d", _tempNum++);
+}
+
+/* Function: generateNewLabelID
+ * Parameters: none
+ * Description: Updates to a new unique label ID.
+ * Returns: none
+ * Preconditions: none
+ */
+void generateNewLabelID() {
+	sprintf(_labelID, "_label%d", _labelNum++);
 }

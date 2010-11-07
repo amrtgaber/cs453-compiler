@@ -1,4 +1,18 @@
-extern char permutation(char string[]);
+void reverse(char string[]);
+extern void exported(void);
+
+int x, a, b, d, e, f, g[5], h, i[10], j[100];
+
+void main(char c[]) {
+	x = 5;
+	a = 42;
+	x = a;
+	
+	reverse(c);
+	exported();
+}
+
+/*extern char permutation(char string[]);
 
 char permutationFound;
 
@@ -38,4 +52,4 @@ void permute(char string[]) {
 			permutationFound = 0;
 		}
 	}
-}
+}*/

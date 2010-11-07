@@ -1,7 +1,7 @@
 /* File: symbalTable.h 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 24/10/2010
+ * Last Modified: 6/11/2010
  * Purpose: Header file for symbolTable.c.
  */
 
@@ -44,7 +44,6 @@ typedef enum FunctionType {
 typedef union Value {
 	int		intVal;
 	char 	charVal;
-	int 	*intArray;
 	char 	*string;
 } Value;
 
@@ -61,7 +60,7 @@ typedef struct Parameter {
  */
 typedef struct Symbol {
 	char			*identifier;
-	Type 			type;		// also stands as the return type for functions
+	Type 			type;		// also used as the return type for functions
 	Value 			value;
 	FunctionType 	functionType;
 	Parameter 		*parameterListHead;

@@ -1,7 +1,7 @@
 /* File: syntaxTree.h 
  * Author: Amr Gaber
  * Created: 3/11/2010
- * Last Modified: 4/11/2010
+ * Last Modified: 6/11/2010
  * Purpose: Header file for syntaxTree.c.
  */
 
@@ -40,7 +40,9 @@ typedef enum Operator {
 	RETURN_TREE,
 	SYMBOL,
 	DECLARATION,
-	STATEMENT
+	STATEMENT,
+	FUNCTION_ROOT,
+	FUNCTION_CALL
 } Operator;
 
 /* Struct: SyntaxTree
@@ -60,8 +62,8 @@ typedef struct SyntaxTree {
  ************************/
 
 /* Function: createTree
- * Parameters: Operator operation, Symbol *symbol, SyntaxNode *left,
- *				SyntaxNode *right
+ * Parameters: Operator operation, Symbol *symbol, SyntaxTree *left,
+ *				SyntaxTree *right
  * Description: Creates a new syntax tree node.
  * Returns: A pointer to the created syntax tree.
  * Preconditions: none
@@ -70,11 +72,27 @@ SyntaxTree *createTree(Operator operation, Symbol *symbol, SyntaxTree *left,
 						SyntaxTree *right);
 
 /* Function: destroyTree
- * Parameters: SyntaxNode *tree
+ * Parameters: SyntaxTree *tree
  * Description: Deallocates the given tree and all children.
  * Returns: none
  * Preconditions: none
  */
 void destroyTree(SyntaxTree *tree);
+
+/* Function: printSyntaxTree
+ * Parameters: SyntaxTree *tree, int tabs
+ * Description: Prints the given syntax tree to the screen.
+ * Returns: none
+ * Preconditions: none
+ */
+void printSyntaxTree(SyntaxTree *tree, int tabs);
+
+/* Function: operatorAsString
+ * Parameters: Operator operation
+ * Description: Converts the enum Operator to a string.
+ * Returns: Returns the given operation as a string.
+ * Preconditions: none
+ */
+char *operatorAsString(Operator operation);
 
 #endif

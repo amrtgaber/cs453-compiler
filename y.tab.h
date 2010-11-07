@@ -90,17 +90,19 @@
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 41 "parser.yacc"
+#line 51 "parser.yacc"
 {
+	char character;
 	int integer;
 	char *string;
+	SyntaxTree *tree;
 	struct exprReturn {
 		Type type;
 		SyntaxTree *tree;
 	} exprReturn;
 }
 /* Line 1529 of yacc.c.  */
-#line 104 "y.tab.h"
+#line 106 "y.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

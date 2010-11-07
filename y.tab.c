@@ -130,7 +130,10 @@
  *						*
  ************************/
 
-void typeError(char *errorMessage);
+void 	typeError(char *errorMessage),
+		generateNewTempID(),
+		generateNewLabelID(),
+		declareGlobalVariables(SyntaxTree *tree);
 
 /************************
  *						*
@@ -140,11 +143,18 @@ void typeError(char *errorMessage);
 
 extern int yylineno;
 extern char *yytext;
-extern FunctionCall *_callStack;
-char *_currID = NULL, *_currFID = NULL, _returnedValue = FALSE, _errorMessage[255],
-		_generateCode = TRUE;
-unsigned int _currTemp = 0, _currLabel = 0;
-Type _currType = UNKNOWN, _currPType = UNKNOWN;
+extern FunctionCall	*_callStack;
+char	*_currID = NULL,
+		*_currFID = NULL,
+		_returnedValue = FALSE,
+		_generateCode = TRUE,
+		_errorMessage[255],
+		_tempID[15],				// up to 10 billion temps > unsigned int max
+		_labelID[16];				// up to 10 billion labels > unsigned int max
+unsigned int	_tempNum = 0,
+				_labelNum = 0;
+Type	_currType = UNKNOWN,
+		_currPType = UNKNOWN;
 FunctionType _currFType = F_UNKNOWN;
 Parameter *_currParam = NULL;
 
@@ -169,17 +179,19 @@ Parameter *_currParam = NULL;
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 41 "parser.yacc"
+#line 51 "parser.yacc"
 {
+	char character;
 	int integer;
 	char *string;
+	SyntaxTree *tree;
 	struct exprReturn {
 		Type type;
 		SyntaxTree *tree;
 	} exprReturn;
 }
 /* Line 193 of yacc.c.  */
-#line 183 "y.tab.c"
+#line 195 "y.tab.c"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
@@ -192,7 +204,7 @@ typedef union YYSTYPE
 
 
 /* Line 216 of yacc.c.  */
-#line 196 "y.tab.c"
+#line 208 "y.tab.c"
 
 #ifdef short
 # undef short
@@ -516,15 +528,15 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,    69,    69,    70,    73,    74,    76,    79,    80,    82,
-      83,    85,    88,    93,    99,   104,   109,   127,   128,   131,
-     132,   135,   148,   173,   177,   183,   191,   204,   212,   216,
-     222,   251,   287,   288,   291,   321,   338,   348,   351,   353,
-     356,   361,   366,   371,   376,   397,   411,   412,   440,   439,
-     472,   473,   476,   479,   480,   483,   484,   487,   512,   541,
-     542,   545,   552,   559,   567,   575,   583,   591,   599,   607,
-     615,   623,   631,   639,   646,   654,   653,   667,   668,   669,
-     670,   673,   695,   694,   725,   724,   760,   776,   796,   797
+       0,    84,    84,    85,    88,    89,    91,    94,    98,   100,
+     101,   103,   106,   111,   117,   122,   127,   145,   146,   149,
+     150,   153,   168,   195,   199,   205,   213,   228,   238,   242,
+     248,   281,   322,   323,   326,   356,   377,   391,   394,   396,
+     399,   404,   409,   414,   419,   440,   454,   455,   486,   485,
+     520,   521,   524,   527,   533,   536,   537,   540,   568,   597,
+     598,   601,   608,   615,   623,   631,   639,   647,   655,   663,
+     671,   679,   687,   695,   702,   710,   709,   725,   726,   735,
+     744,   755,   777,   776,   807,   806,   842,   859,   888,   889
 };
 #endif
 
@@ -1576,24 +1588,31 @@ yyreduce:
   switch (yyn)
     {
         case 4:
-#line 73 "parser.yacc"
+#line 88 "parser.yacc"
     { yyerrok; }
     break;
 
   case 5:
-#line 74 "parser.yacc"
+#line 89 "parser.yacc"
     { yyerrok; }
     break;
 
+  case 7:
+#line 95 "parser.yacc"
+    {
+			  declareGlobalVariables(createTree(DECLARATION, NULL, (yyvsp[(2) - (3)].tree), (yyvsp[(3) - (3)].tree)));
+			}
+    break;
+
   case 12:
-#line 89 "parser.yacc"
+#line 107 "parser.yacc"
     {
 			  _currFID = (yyvsp[(1) - (1)].string);
 			}
     break;
 
   case 13:
-#line 94 "parser.yacc"
+#line 112 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (1)].string);
 			  (yyval.string) = (yyvsp[(1) - (1)].string);
@@ -1601,21 +1620,21 @@ yyreduce:
     break;
 
   case 14:
-#line 100 "parser.yacc"
+#line 118 "parser.yacc"
     {
 			  _currFType = EXTERN_TYPE;
 			}
     break;
 
   case 15:
-#line 105 "parser.yacc"
+#line 123 "parser.yacc"
     {
 			  _currType = VOID_TYPE;
 			}
     break;
 
   case 16:
-#line 109 "parser.yacc"
+#line 127 "parser.yacc"
     {
 			  Symbol *prevDcl = recallGlobal(_currFID);
 	
@@ -1634,8 +1653,18 @@ yyreduce:
 			}
     break;
 
+  case 19:
+#line 149 "parser.yacc"
+    { (yyval.tree) = createTree(DECLARATION, NULL, (yyvsp[(3) - (3)].tree), (yyvsp[(1) - (3)].tree)); }
+    break;
+
+  case 20:
+#line 150 "parser.yacc"
+    { (yyval.tree) = NULL; }
+    break;
+
   case 21:
-#line 136 "parser.yacc"
+#line 154 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (1)].string);
 			
@@ -1643,15 +1672,17 @@ yyreduce:
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  (yyval.tree) = NULL;
 			  } else {
 			  	  Symbol *currSymbol = insert(_currID, _currType);
 				  currSymbol->functionType = NON_FUNCTION;
+				  (yyval.tree) = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  }
 			}
     break;
 
   case 22:
-#line 149 "parser.yacc"
+#line 169 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (4)].string);
 			
@@ -1664,9 +1695,11 @@ yyreduce:
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  (yyval.tree) = NULL;
 			  } else {
 			  	  Symbol *currSymbol = insert(_currID, _currType);
 			      currSymbol->functionType = NON_FUNCTION;
+				  (yyval.tree) = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  }
 			
 			  if (_currType == CHAR_ARRAY)
@@ -1677,21 +1710,21 @@ yyreduce:
     break;
 
   case 23:
-#line 174 "parser.yacc"
+#line 196 "parser.yacc"
     {
 			  _currType = CHAR_TYPE;
 			}
     break;
 
   case 24:
-#line 178 "parser.yacc"
+#line 200 "parser.yacc"
     {
 			  _currType = INT_TYPE;
 			}
     break;
 
   case 25:
-#line 183 "parser.yacc"
+#line 205 "parser.yacc"
     { 
 			  Symbol *currSymbol = recallGlobal(_currFID);
 			  
@@ -1702,7 +1735,7 @@ yyreduce:
     break;
 
   case 26:
-#line 192 "parser.yacc"
+#line 214 "parser.yacc"
     {
 			  Symbol *currentFunction = recallGlobal(_currFID);
 			
@@ -1714,35 +1747,39 @@ yyreduce:
 			  }
 
 			  _currParam = NULL;
+			  
+			  (yyval.tree) = NULL;
 			}
     break;
 
   case 27:
-#line 205 "parser.yacc"
+#line 229 "parser.yacc"
     {
 			  if (_currParam)
 				  typeError("Type mismatch: missing previously declared types");
 			  
 			  _currParam = NULL;
+			
+			  (yyval.tree) = (yyvsp[(2) - (3)].tree);
 			}
     break;
 
   case 28:
-#line 213 "parser.yacc"
+#line 239 "parser.yacc"
     {
 				_currPType = CHAR_TYPE;
 			}
     break;
 
   case 29:
-#line 217 "parser.yacc"
+#line 243 "parser.yacc"
     {
 				_currPType = INT_TYPE;
 			}
     break;
 
   case 30:
-#line 223 "parser.yacc"
+#line 249 "parser.yacc"
     {
 			  _currID = (yyvsp[(2) - (2)].string);
 			
@@ -1752,19 +1789,23 @@ yyreduce:
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  (yyval.tree) = NULL;
 			    } else {
 			  	  	if (_currParam) {
 					  	if (_currParam->type != _currPType) {
 							sprintf(_errorMessage, "%s does not match previous declaration",
 								typeAsString(_currPType));
 							typeError(_errorMessage);
+							(yyval.tree) = NULL;
 						} else {
 							Symbol *currSymbol = insert(_currID, _currPType);
 						    currSymbol->functionType = NON_FUNCTION;
+							(yyval.tree) = createTree(SYMBOL, currSymbol, NULL, NULL);
 						}
 			  	 	} else {
 				  		Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					    currSymbol->functionType = NON_FUNCTION;
+						(yyval.tree) = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  		}
 				}
 				
@@ -1774,7 +1815,7 @@ yyreduce:
     break;
 
   case 31:
-#line 252 "parser.yacc"
+#line 282 "parser.yacc"
     {
 			  _currID = (yyvsp[(2) - (4)].string);
 			  Symbol *currentFunction = recallGlobal(_currFID);
@@ -1788,6 +1829,7 @@ yyreduce:
 				  sprintf(_errorMessage, "%s previously declared in this function",
 					  _currID);
 			      typeError(_errorMessage);
+				  (yyval.tree) = NULL;
 			  } else {
 			  	  if (_currParam) {
 					  if (_currParam->type != _currPType) {
@@ -1795,13 +1837,17 @@ yyreduce:
 							  typeError("CHAR_ARRAY does not match previous declaration");
 						  else
 							  typeError("INT_ARRAY does not match previous declaration");
+						  
+						  (yyval.tree) = NULL;
 					  } else {
 						  Symbol *currSymbol = insert(_currID, _currPType);
 						  currSymbol->functionType = NON_FUNCTION;
+						  (yyval.tree) = createTree(SYMBOL, currSymbol, NULL, NULL);
 					  }
 			  	  } else {
 				  	  Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					  currSymbol->functionType = NON_FUNCTION;
+					  (yyval.tree) = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  	  }
 			  }
 			
@@ -1811,7 +1857,7 @@ yyreduce:
     break;
 
   case 34:
-#line 291 "parser.yacc"
+#line 326 "parser.yacc"
     {
 			  Symbol *prevDcl = recallGlobal(_currFID);
 
@@ -1843,7 +1889,7 @@ yyreduce:
     break;
 
   case 35:
-#line 323 "parser.yacc"
+#line 358 "parser.yacc"
     { 
 			  if (!_returnedValue) {
 				  sprintf(_errorMessage, "function %s must have at least one return statement",
@@ -1853,7 +1899,11 @@ yyreduce:
 				  _returnedValue = FALSE;
 			  }
 			  
-			  #ifdef DEBUG	
+			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), (yyvsp[(5) - (10)].tree), (yyvsp[(9) - (10)].tree));
+			  //printf("\nSYNTAX TREE:\n\n");
+			  //printSyntaxTree(function, 0);
+			
+			  #ifdef DEBUG
 			  printSymbolTable();
 			  #endif
 					
@@ -1862,8 +1912,12 @@ yyreduce:
     break;
 
   case 36:
-#line 340 "parser.yacc"
+#line 379 "parser.yacc"
     { 
+			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), (yyvsp[(5) - (10)].tree), (yyvsp[(9) - (10)].tree));
+			  //printf("\nSYNTAX TREE:\n\n");
+			  //printSyntaxTree(function, 0);
+			
 			  #ifdef DEBUG
 			  printSymbolTable();
 			  #endif
@@ -1872,12 +1926,12 @@ yyreduce:
     break;
 
   case 38:
-#line 351 "parser.yacc"
+#line 394 "parser.yacc"
     { yyerrok; }
     break;
 
   case 40:
-#line 357 "parser.yacc"
+#line 400 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (5)].exprReturn).type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
@@ -1885,7 +1939,7 @@ yyreduce:
     break;
 
   case 41:
-#line 362 "parser.yacc"
+#line 405 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (7)].exprReturn).type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
@@ -1893,7 +1947,7 @@ yyreduce:
     break;
 
   case 42:
-#line 367 "parser.yacc"
+#line 410 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (5)].exprReturn).type != BOOLEAN)
 				  typeError("conditional in while loop must be a boolean");
@@ -1901,7 +1955,7 @@ yyreduce:
     break;
 
   case 43:
-#line 372 "parser.yacc"
+#line 415 "parser.yacc"
     {
 			  if ((yyvsp[(5) - (9)].integer) != BOOLEAN)
 				  typeError("conditional in for loop must be a boolean");
@@ -1909,7 +1963,7 @@ yyreduce:
     break;
 
   case 44:
-#line 377 "parser.yacc"
+#line 420 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currFID);
 			
@@ -1933,7 +1987,7 @@ yyreduce:
     break;
 
   case 45:
-#line 398 "parser.yacc"
+#line 441 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currFID);
 			
@@ -1949,8 +2003,13 @@ yyreduce:
 			}
     break;
 
+  case 46:
+#line 454 "parser.yacc"
+    { (yyval.tree) = (yyvsp[(1) - (2)].tree); }
+    break;
+
   case 47:
-#line 413 "parser.yacc"
+#line 456 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 			  
@@ -1971,16 +2030,19 @@ yyreduce:
 						  _currID);
 				      typeError(_errorMessage);
 				  }
+				  
+				  (yyval.tree) = createTree(FUNCTION_CALL, currSymbol, NULL, NULL);
 			  } else {
 				  sprintf(_errorMessage, "%s undefined", _currID);
 			      typeError(_errorMessage);
+				  (yyval.tree) = NULL;
 			  }
 			
 			}
     break;
 
   case 48:
-#line 440 "parser.yacc"
+#line 486 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 
@@ -2004,7 +2066,7 @@ yyreduce:
     break;
 
   case 49:
-#line 461 "parser.yacc"
+#line 507 "parser.yacc"
     {
 			  if (_callStack) {
 			  	  if (_callStack->currParam) {
@@ -2013,28 +2075,54 @@ yyreduce:
 				  	  typeError(_errorMessage);
 			  	  }
 				
+				  (yyval.tree) = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), (yyvsp[(4) - (7)].tree), NULL);
+				
 		      	  popFunctionCall();
 		      }
 			}
     break;
 
+  case 50:
+#line 520 "parser.yacc"
+    { (yyval.tree) = (yyvsp[(2) - (3)].tree); }
+    break;
+
+  case 51:
+#line 521 "parser.yacc"
+    { (yyval.tree) = NULL; }
+    break;
+
   case 52:
-#line 476 "parser.yacc"
+#line 524 "parser.yacc"
     { yyerrok; }
     break;
 
+  case 53:
+#line 528 "parser.yacc"
+    {
+			  if ((yyvsp[(2) - (2)].tree)) {
+			  	  (yyval.tree) = createTree(STATEMENT, NULL, (yyvsp[(2) - (2)].tree), (yyvsp[(1) - (2)].tree));
+			  }
+			}
+    break;
+
+  case 54:
+#line 533 "parser.yacc"
+    { (yyval.tree) = NULL; }
+    break;
+
   case 55:
-#line 483 "parser.yacc"
+#line 536 "parser.yacc"
     { (yyval.integer) = (yyvsp[(1) - (1)].exprReturn).type; }
     break;
 
   case 56:
-#line 484 "parser.yacc"
+#line 537 "parser.yacc"
     { (yyval.integer) = BOOLEAN; }
     break;
 
   case 57:
-#line 488 "parser.yacc"
+#line 541 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (3)].string);
 			  Symbol *currSymbol = recall(_currID);
@@ -2058,11 +2146,14 @@ yyreduce:
 					  }
 				  }
 			  }
+			
+			  SyntaxTree *leftHandSide = createTree(SYMBOL, currSymbol, NULL, NULL);
+			  (yyval.tree) = createTree(ASSIGNMENT, NULL, leftHandSide, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 58:
-#line 513 "parser.yacc"
+#line 569 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (6)].string);
 			  Symbol *currSymbol = recall(_currID);
@@ -2092,7 +2183,7 @@ yyreduce:
     break;
 
   case 61:
-#line 546 "parser.yacc"
+#line 602 "parser.yacc"
     {
 			  if ((yyvsp[(2) - (2)].exprReturn).type != INT_TYPE && (yyvsp[(2) - (2)].exprReturn).type != CHAR_TYPE)
 				  typeError("incompatible expression for operator '-'");
@@ -2102,7 +2193,7 @@ yyreduce:
     break;
 
   case 62:
-#line 553 "parser.yacc"
+#line 609 "parser.yacc"
     {
 			  if ((yyvsp[(2) - (2)].exprReturn).type != BOOLEAN)
 				  typeError("incompatible expression for operator '!'");
@@ -2112,7 +2203,7 @@ yyreduce:
     break;
 
   case 63:
-#line 560 "parser.yacc"
+#line 616 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE)
 				  || ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2123,7 +2214,7 @@ yyreduce:
     break;
 
   case 64:
-#line 568 "parser.yacc"
+#line 624 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE)
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2134,7 +2225,7 @@ yyreduce:
     break;
 
   case 65:
-#line 576 "parser.yacc"
+#line 632 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2145,7 +2236,7 @@ yyreduce:
     break;
 
   case 66:
-#line 584 "parser.yacc"
+#line 640 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2156,7 +2247,7 @@ yyreduce:
     break;
 
   case 67:
-#line 592 "parser.yacc"
+#line 648 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2167,7 +2258,7 @@ yyreduce:
     break;
 
   case 68:
-#line 600 "parser.yacc"
+#line 656 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2178,7 +2269,7 @@ yyreduce:
     break;
 
   case 69:
-#line 608 "parser.yacc"
+#line 664 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2189,7 +2280,7 @@ yyreduce:
     break;
 
   case 70:
-#line 616 "parser.yacc"
+#line 672 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2200,7 +2291,7 @@ yyreduce:
     break;
 
   case 71:
-#line 624 "parser.yacc"
+#line 680 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2211,7 +2302,7 @@ yyreduce:
     break;
 
   case 72:
-#line 632 "parser.yacc"
+#line 688 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
@@ -2222,7 +2313,7 @@ yyreduce:
     break;
 
   case 73:
-#line 640 "parser.yacc"
+#line 696 "parser.yacc"
     {
 			  if ((yyvsp[(1) - (3)].exprReturn).type != BOOLEAN || (yyvsp[(3) - (3)].exprReturn).type != BOOLEAN)
 				  typeError("incompatible expression for operator '&&'");
@@ -2232,7 +2323,7 @@ yyreduce:
     break;
 
   case 74:
-#line 647 "parser.yacc"
+#line 703 "parser.yacc"
     {
 			  if ((yyvsp[(1) - (3)].exprReturn).type != BOOLEAN || (yyvsp[(3) - (3)].exprReturn).type != BOOLEAN)
 				  typeError("incompatible expression for operator '||'");
@@ -2242,8 +2333,8 @@ yyreduce:
     break;
 
   case 75:
-#line 654 "parser.yacc"
-    { 
+#line 710 "parser.yacc"
+    {
 			  _currID = (yyvsp[(1) - (1)].string);
 			  Symbol *currSymbol = recall(_currID);
 			  
@@ -2251,38 +2342,61 @@ yyreduce:
 				  sprintf(_errorMessage, "%s undefined", _currID);
 				  typeError(_errorMessage);
 			  }
+				
 			}
     break;
 
   case 76:
-#line 664 "parser.yacc"
+#line 721 "parser.yacc"
     {
-				(yyval.exprReturn).type = (yyvsp[(3) - (3)].integer);
+				(yyval.exprReturn).type = (yyvsp[(3) - (3)].exprReturn).type;
+				(yyval.exprReturn).tree = (yyvsp[(3) - (3)].exprReturn).tree;
 			}
     break;
 
   case 77:
-#line 667 "parser.yacc"
+#line 725 "parser.yacc"
     { (yyval.exprReturn).type = (yyvsp[(2) - (3)].exprReturn).type; }
     break;
 
   case 78:
-#line 668 "parser.yacc"
-    { (yyval.exprReturn).type = INT_TYPE; }
+#line 727 "parser.yacc"
+    {
+			  (yyval.exprReturn).type = INT_TYPE;
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, INT_TYPE);
+			  newSymbol->value.intVal = (yyvsp[(1) - (1)].integer);
+			  newSymbol->functionType = NON_FUNCTION;
+			  (yyval.exprReturn).tree = createTree(SYMBOL, newSymbol, NULL, NULL);
+			}
     break;
 
   case 79:
-#line 669 "parser.yacc"
-    { (yyval.exprReturn).type = CHAR_TYPE; }
+#line 736 "parser.yacc"
+    {
+			  (yyval.exprReturn).type = CHAR_TYPE;
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, CHAR_TYPE);
+			  newSymbol->value.charVal = (yyvsp[(1) - (1)].character);
+			  newSymbol->functionType = NON_FUNCTION;
+			  (yyval.exprReturn).tree = createTree(SYMBOL, newSymbol, NULL, NULL);
+			}
     break;
 
   case 80:
-#line 670 "parser.yacc"
-    { (yyval.exprReturn).type = CHAR_ARRAY; }
+#line 745 "parser.yacc"
+    {
+			  (yyval.exprReturn).type = CHAR_ARRAY;
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, CHAR_ARRAY);
+			  newSymbol->value.string = (yyvsp[(1) - (1)].string);
+			  newSymbol->functionType = NON_FUNCTION;
+			  (yyval.exprReturn).tree = createTree(SYMBOL, newSymbol, NULL, NULL);
+			}
     break;
 
   case 81:
-#line 674 "parser.yacc"
+#line 756 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 			  
@@ -2298,15 +2412,15 @@ yyreduce:
 						  _currID);
 			          typeError(_errorMessage);
 			      }
-				  (yyval.integer) = currSymbol->type;
+				  (yyval.exprReturn).type = currSymbol->type;
 			  } else {
-				  (yyval.integer) = UNKNOWN;
+				  (yyval.exprReturn).type = UNKNOWN;
 			  }
 			}
     break;
 
   case 82:
-#line 695 "parser.yacc"
+#line 777 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 
@@ -2324,7 +2438,7 @@ yyreduce:
     break;
 
   case 83:
-#line 710 "parser.yacc"
+#line 792 "parser.yacc"
     { 
 			  if (_callStack) {
 			  	  if (_callStack->currParam) {
@@ -2332,17 +2446,17 @@ yyreduce:
 					  	  _callStack->identifier);
 				  	  typeError(_errorMessage);
 			  	  }
-			  	  (yyval.integer) = (recallGlobal(_callStack->identifier))->type;
+			  	  (yyval.exprReturn).type = (recallGlobal(_callStack->identifier))->type;
 			      popFunctionCall();
 			  } else {
-			      (yyval.integer) = UNKNOWN;
+			      (yyval.exprReturn).type = UNKNOWN;
 			  }
 			  
 			}
     break;
 
   case 84:
-#line 725 "parser.yacc"
+#line 807 "parser.yacc"
     {
 			  Symbol *currSymbol = recall(_currID);
 
@@ -2359,7 +2473,7 @@ yyreduce:
     break;
 
   case 85:
-#line 739 "parser.yacc"
+#line 821 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (4)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (4)].exprReturn).type != CHAR_TYPE) {
 				  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
@@ -2368,14 +2482,14 @@ yyreduce:
 			  }
 			
 			  if (!_callStack) {
-				  (yyval.integer) = UNKNOWN;
+				  (yyval.exprReturn).type = UNKNOWN;
 			  } else {
-				  (yyval.integer) = (recall(_callStack->identifier))->type;
+				  (yyval.exprReturn).type = (recall(_callStack->identifier))->type;
 					
-				  if ((yyval.integer) == CHAR_ARRAY)
-					  (yyval.integer) = CHAR_TYPE;
+				  if ((yyval.exprReturn).type == CHAR_ARRAY)
+					  (yyval.exprReturn).type = CHAR_TYPE;
 				  else
-					  (yyval.integer) = INT_TYPE;
+					  (yyval.exprReturn).type = INT_TYPE;
 				
 				  popFunctionCall();
 			  }
@@ -2383,7 +2497,7 @@ yyreduce:
     break;
 
   case 86:
-#line 760 "parser.yacc"
+#line 842 "parser.yacc"
     {
 			  Symbol *currSymbol = recall(_currID);
 				
@@ -2393,27 +2507,37 @@ yyreduce:
 						  _currID);
 					  typeError(_errorMessage);
 				  }
-				  (yyval.integer) = currSymbol->type;
+				  (yyval.exprReturn).type = currSymbol->type;
+				  (yyval.exprReturn).tree = createTree(SYMBOL, currSymbol, NULL, NULL);
 			  } else {
-				  (yyval.integer) = UNKNOWN;
+				  (yyval.exprReturn).type = UNKNOWN;
 			  }
 			}
     break;
 
   case 87:
-#line 777 "parser.yacc"
+#line 860 "parser.yacc"
     {
 			  if (_callStack) {
 		  	  	  if (!_callStack->currParam) {
 					  sprintf(_errorMessage, "extra arguments passed to function %s",
 						  _callStack->identifier);
 				      typeError(_errorMessage);
+					  (yyval.tree) = NULL;
 				  } else if (_callStack->currParam->type != (yyvsp[(1) - (1)].exprReturn).type) {
 					  if ((_callStack->currParam->type != INT_TYPE
 					          && _callStack->currParam->type != CHAR_TYPE)
-						      || ((yyvsp[(1) - (1)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (1)].exprReturn).type != CHAR_TYPE))
+						      || ((yyvsp[(1) - (1)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (1)].exprReturn).type != CHAR_TYPE)) {
 			  	          typeError("type mismatch in arguments to function");
+						  (yyval.tree) = NULL;
+					  } else {
+						  (yyval.tree) = (yyvsp[(1) - (1)].exprReturn).tree;
+					  }
+				  } else {
+					  (yyval.tree) = (yyvsp[(1) - (1)].exprReturn).tree;
 				  }
+			  } else {
+				  (yyval.tree) = NULL;
 			  }
 		  	  
 		      if (_callStack->currParam)
@@ -2423,7 +2547,7 @@ yyreduce:
 
 
 /* Line 1267 of yacc.c.  */
-#line 2427 "y.tab.c"
+#line 2551 "y.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2637,32 +2761,74 @@ yyreturn:
 }
 
 
-#line 800 "parser.yacc"
+#line 892 "parser.yacc"
 
 
+/* Function: main
+ * Parameters: none
+ * Description: Program execution begins here.
+ * Returns: 0 for success, 1 if errors were found (syntactic or semantic).
+ * Preconditions: none
+ */
 main() {
 	pushSymbolTable();				// initialize global symbol table
 	yyparse();
 	popSymbolTable();				// free global symbol table
-	return 0;
+	
+	if (_generateCode)
+		return 0;					// success
+	return 1;						// failure
 }
 
-/* Function: typeError
- * Parameters: char *message
- * Description: Prints error message and turns code generation off.
+/* Function: yyError
+ * Parameters: char *errorMessage
+ * Description: Called when syntax errors are found. Prints error message and
+ *					turns code generation off.
  * Returns: void
  * Preconditions: none
  */
-void typeError(char *message) {
-	fprintf(stderr, "TYPE ERROR: line %d: %s\n", yylineno, message);
-	_generateCode = FALSE;
-}
-
 yyerror(char* errorMessage) {
 	fprintf(stderr, "SYNTAX ERROR: line %d: Near token (%s)\n", yylineno, yytext);
+	_generateCode = FALSE;
 }
 
 yywrap() {
 	return 1;
+}
+
+void declareGlobalVariables(SyntaxTree *tree) {
+	
+}
+
+/* Function: typeError
+ * Parameters: char *errorMessage
+ * Description: Called when semantic errors are found. Prints error message and
+ *					turns code generation off.
+ * Returns: void
+ * Preconditions: none
+ */
+void typeError(char *errorMessage) {
+	fprintf(stderr, "TYPE ERROR: line %d: %s\n", yylineno, errorMessage);
+	_generateCode = FALSE;
+}
+
+/* Function: generateNewTempID
+ * Parameters: none
+ * Description: Updates to a new unique temporary variable ID.
+ * Returns: none
+ * Preconditions: none
+ */
+void generateNewTempID() {
+	sprintf(_tempID, "_temp%d", _tempNum++);
+}
+
+/* Function: generateNewLabelID
+ * Parameters: none
+ * Description: Updates to a new unique label ID.
+ * Returns: none
+ * Preconditions: none
+ */
+void generateNewLabelID() {
+	sprintf(_labelID, "_label%d", _labelNum++);
 }
 

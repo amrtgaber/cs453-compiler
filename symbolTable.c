@@ -1,7 +1,7 @@
 /* File: symbalTable.c 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 24/10/2010
+ * Last Modified: 5/11/2010
  * Purpose: Symbol table for use with the C-- compiler.
  */
 
@@ -76,7 +76,7 @@ Symbol *recallGlobal(char *identifier) {
 }
 
 /* Function: insert
- * Parameters: char *identifier, Type type 
+ * Parameters: char *identifier, Type type
  * Description: Inserts a symbol into the symbol table.
  * Returns: A pointer to the inserted symbol.
  * Preconditions: The stack must not be empty.
@@ -88,7 +88,7 @@ Symbol *insert(char *identifier, Type type) {
 	Symbol *toInsert = NULL;
 	
 	if (!(toInsert = malloc(sizeof(Symbol))))
-		ERROR("", __LINE__, TRUE); 				// out of memory
+		ERROR("", __LINE__, TRUE); 					// out of memory
 		
 	if (identifier) {
 		if (!(toInsert->identifier = strdup(identifier)))
@@ -98,7 +98,8 @@ Symbol *insert(char *identifier, Type type) {
 	}
 		
 	toInsert->type = type;
-	toInsert->functionType = -1;
+	toInsert->value.intVal = 0;
+	toInsert->functionType = UNKNOWN;
 	toInsert->parameterListHead = NULL;
 	
 	toInsert->next = _stack->listHead;
@@ -232,6 +233,21 @@ void printSymbolTable() {
 				currSymbol = currSymbol->next) {
 			printf("\tSymbol: %s\n", currSymbol->identifier);
 			printf("\tType: %s\n", typeAsString(currSymbol->type));
+			
+			switch (currSymbol->type) {
+				case CHAR_TYPE:
+					printf("\tValue: %c\n", currSymbol->value.charVal);
+					break;
+				case INT_TYPE:
+					printf("\tValue: %d\n", currSymbol->value.intVal);
+					break;
+				case CHAR_ARRAY:
+					printf("\tValue: %s\n", currSymbol->value.string);
+					break;
+				default:
+					break;
+			}
+			
 			printf("\tFunctionType: %s\n", functionTypeAsString(currSymbol->functionType));
 			printf("\tParameters: ");
 			printParamList(currSymbol->parameterListHead);
