@@ -536,7 +536,7 @@ char *yytext;
 /* File: scanner.lex
  * Author: Amr Gaber
  * Created: 24/9/2010
- * Last Modified: 23/10/2010
+ * Last Modified: 5/11/2010
  * Purpose: Tokenizer for parser.yacc. Used with the makefile to construct
  * 				the C-- compiler.
  */
@@ -1022,12 +1022,12 @@ YY_RULE_SETUP
 case 37:
 YY_RULE_SETUP
 #line 76 "scanner.lex"
-{ yylval.string = strdup(yytext); } return(INTCON);
+{ yylval.integer = atoi(yytext); } return(INTCON);
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
 #line 77 "scanner.lex"
-{ yylval.string = strdup(yytext); } return(CHARCON);
+{ yylval.character = yytext[0]; } return(CHARCON);
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
