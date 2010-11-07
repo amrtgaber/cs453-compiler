@@ -1,7 +1,8 @@
 void reverse(char string[]);
 extern void exported(void);
 
-int x, a, b, d, e, f, g[5], h, i[10], j[100];
+int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[100];
+char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
 
 void main(char c[]) {
 	x = 5;

@@ -1,7 +1,7 @@
 /* File: code.h 
  * Author: Amr Gaber
  * Created: 4/11/2010
- * Last Modified: 4/11/2010
+ * Last Modified: 6/11/2010
  * Purpose: Header file for code.c.
  */
 
@@ -44,7 +44,7 @@ typedef enum Opcode {
 	ENTER,
 	LEAVE,
 	PUSH_PARAM,
-	POP_PARAM,
+	DECLARATION_OP,
 	WHILE_OP,
 	RETURN_OP
 } Opcode;
@@ -80,5 +80,20 @@ Code *createCode(Opcode opcode, Symbol *source1, Symbol *source2, Symbol *destin
  */
 void destroyCode(Code *code);
 
+/* Function: printCode
+ * Parameters: Code *code
+ * Description: Prints the code list starting at the given code.
+ * Returns: none
+ * Preconditions: none
+ */
+void printCode(Code *code);
+
+/* Function: opcodeAsString
+ * Parameters: Opcode opcode
+ * Description: Converts the enum Opcode to a string.
+ * Returns: Returns the given opcode as a string.
+ * Preconditions: none
+ */
+char *opcodeAsString(Opcode opcode);
 
 #endif

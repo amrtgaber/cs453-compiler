@@ -1,7 +1,7 @@
 /* File: code.c 
  * Author: Amr Gaber
  * Created: 4/11/2010
- * Last Modified: 4/11/2010
+ * Last Modified: 6/11/2010
  * Purpose: Contains functions for the three address codes.
  */
 
@@ -42,4 +42,157 @@ void destroyCode(Code *code) {
 	
 	destroyCode(code->next);	
 	free(code);
+}
+
+/* Function: printCode
+ * Parameters: Code *code
+ * Description: Prints the code list starting at the given code.
+ * Returns: none
+ * Preconditions: none
+ */
+void printCode(Code *code) {
+	if (!code)
+		return;
+		
+	printf("Opcode: %s\n", opcodeAsString(code->opcode));
+	printf("-----------------------\n");
+	
+	if (code->source1) {
+		printf("Source1: %s\n", code->source1->identifier);
+		printf("\tType: %s\n", typeAsString(code->source1->type));
+		
+		switch (code->source1->type) {
+			case CHAR_TYPE:
+				printf("\tValue: %c\n", code->source1->value.charVal);
+				break;
+			case INT_TYPE:
+				printf("\tValue: %d\n", code->source1->value.intVal);
+				break;
+			default:
+				break;
+		}
+		
+		printf("\tFunctionType: %s\n", functionTypeAsString(code->source1->functionType));
+		printf("\tParameters: ");
+		printParamList(code->source1->parameterListHead);
+		printf("\n");
+	} else {
+		printf("Source1: NONE\n");
+	}
+	
+	if (code->source2) {
+		printf("Source2: %s\n", code->source2->identifier);
+		printf("\tType: %s\n", typeAsString(code->source2->type));
+		
+		switch (code->source2->type) {
+			case CHAR_TYPE:
+				printf("\tValue: %c\n", code->source2->value.charVal);
+				break;
+			case INT_TYPE:
+				printf("\tValue: %d\n", code->source2->value.intVal);
+				break;
+			default:
+				break;
+		}
+		
+		printf("\tFunctionType: %s\n", functionTypeAsString(code->source2->functionType));
+		printf("\tParameters: ");
+		printParamList(code->source2->parameterListHead);
+		printf("\n");
+	} else {
+		printf("Source2: NONE\n");
+	}
+	
+	if (code->destination) {
+		printf("Destination: %s\n", code->destination->identifier);
+		printf("\tType: %s\n", typeAsString(code->destination->type));
+		
+		switch (code->destination->type) {
+			case CHAR_TYPE:
+				printf("\tValue: %c\n", code->destination->value.charVal);
+				break;
+			case INT_TYPE:
+				printf("\tValue: %d\n", code->destination->value.intVal);
+				break;
+			default:
+				break;
+		}
+		
+		printf("\tFunctionType: %s\n", functionTypeAsString(code->destination->functionType));
+		printf("\tParameters: ");
+		printParamList(code->destination->parameterListHead);
+		printf("\n");
+	} else {
+		printf("Destination: NONE\n");
+	}
+	
+	printf("\n");
+	printCode(code->next);
+}
+
+/* Function: opcodeAsString
+ * Parameters: Opcode opcode
+ * Description: Converts the enum Opcode to a string.
+ * Returns: Returns the given opcode as a string.
+ * Preconditions: none
+ */
+char *opcodeAsString(Opcode opcode) {
+	switch (opcode) {
+		case ADD_OP:
+			return "+";
+	 	case SUB_OP:
+			return "-";
+		case MULT_OP:
+			return "*";
+		case DIV_OP:
+			return "/";
+		case NEG_OP:
+			return "!";
+		case EQUAL_OP:
+			return "==";
+		case NOT_EQUAL_OP:
+			return "!=";
+		case GREATER_THAN_OP:
+			return ">";
+		case GREATER_EQUAL_OP:
+			return ">=";
+		case LESS_THAN_OP:
+			return "<";
+		case LESS_EQUAL_OP:
+			return "<=";
+		case AND_OP:
+			return "&&";
+		case OR_OP:
+			return "||";
+		case ASSIGNMENT_OP:
+			return "=";
+		case BRANCH_EQUAL:
+			return "BRANCH ==";
+		case BRANCH_NOT_EQUAL:
+			return "BRANCH !=";
+		case BRANCH_LESS:
+			return "BRANCH <";
+		case BRANCH_LESS_EQUAL:
+			return "BRANCH <=";
+		case BRANCH_GREATER:
+			return "BRANCH >";
+		case BRANCH_GREATER_EQUAL:
+			return "BRANCH >=";
+		case JUMP:
+			return "JUMP";
+		case ENTER:
+			return "ENTER";
+		case LEAVE:
+			return "LEAVE";
+		case PUSH_PARAM:
+			return "PUSH PARAMETER";
+		case DECLARATION_OP:
+			return "DECLARATION";
+		case WHILE_OP:
+			return "WHILE";
+		case RETURN_OP:
+			return "RETURN";
+		default:
+			return "MISSING/UNRECOGNIZED OPCODE";
+	}
 }
