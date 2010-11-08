@@ -1,29 +1,53 @@
 extern void print_int(int n);
 extern void print_string(char s[]);
 
+void printX(int x), printA(int a), make10(int n), make5(int n);
+
 int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[100];
 char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
 
 void main(void) {
 	char1 = '#';
 	char2 = '\n';
+	char3 = '\0';
 	x = 5;
-	print_string("x = ");
-	print_int(x);
-	print_string("\n");
+	printX(x);
 	a = 42;
-	print_string("a = ");
-	print_int(a);
-	print_string("\n");
+	printA(a);
 	x = a;
-	print_string("x = ");
-	print_int(x);
-	print_string("\n");
-	print_string("a = ");
-	print_int(a);
-	print_string("\n");
+	printX(x);
+	printA(a);
 
 	print_int(100);
+	print_string("\n");
+	
+	make10(x);
+	printX(x);
+}
+
+void make10(int n) {
+	make5(x);
+	make5(x);
+	print_string("making 10...\n");
+	n = 10;
+	x = 10;
+}
+
+void make5(int n) {
+	print_string("making 5...\n");
+	n = 5;
+	x = n;
+}
+
+void printX(int x) {
+	print_string("x = ");
+	print_int(x);
+	print_string("\n");
+}
+
+void printA(int a) {
+	print_string("a = ");
+	print_int(a);
 	print_string("\n");
 }
 
