@@ -44,6 +44,7 @@ typedef enum FunctionType {
 typedef union Value {
 	int		intVal;			// also used to store the length of arrays
 	char 	charVal;
+	char	*strVal;
 } Value;
 
 /* Struct: Parameter
@@ -112,6 +113,14 @@ Symbol *recallGlobal(char *identifier);
  * Preconditions: The stack must not be empty.
  */
 Symbol *insert(char *identifier, Type type);
+
+/* Function: insertGlobal
+ * Parameters: char *identifier, Type type
+ * Description: Inserts a symbol into the global symbol table.
+ * Returns: A pointer to the inserted symbol.
+ * Preconditions: The stack must not be empty.
+ */
+Symbol *insertGlobal(char *identifier, Type type);
 
 /* Function: addParameter
  * Parameters: char *identifier, Type type, Symbol *currentFunction

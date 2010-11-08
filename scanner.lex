@@ -74,7 +74,16 @@ catchAll		[\x00-\x7E]
 {wspace}		;
 {identifier}	{ yylval.string = strdup(yytext); } return(ID);
 {intCon}		{ yylval.integer = atoi(yytext); } return(INTCON);
-{charCon}		{ yylval.character = yytext[0]; } return(CHARCON);
+{charCon}		{ 
+					if (yytext[1] == '\\') {
+						if (yytext[2] == 'n')
+							yylval.character = '\n';
+						else
+							yylval.character = '\0';
+					} else {
+						yylval.character = yytext[1];
+					}
+				 } return(CHARCON);
 {strCon}		{ yylval.string = strdup(yytext); } return(STRCON);
 {catchAll}		return(OTHER);
 

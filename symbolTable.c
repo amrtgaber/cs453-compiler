@@ -109,6 +109,44 @@ Symbol *insert(char *identifier, Type type) {
 	return toInsert;
 }
 
+/* Function: insertGlobal
+ * Parameters: char *identifier, Type type
+ * Description: Inserts a symbol into the global symbol table.
+ * Returns: A pointer to the inserted symbol.
+ * Preconditions: The stack must not be empty.
+ */
+Symbol *insertGlobal(char *identifier, Type type) {
+	if (!_stack)
+		ERROR("Insert called on emtpy stack.", __LINE__, FALSE);
+
+	Symbol *toInsert = NULL;
+	SymbolTable *currTable = _stack;
+	
+	while(currTable->below)
+		currTable = currTable->below;
+	
+	if (!(toInsert = malloc(sizeof(Symbol))))
+		ERROR("", __LINE__, TRUE); 					// out of memory
+		
+	if (identifier) {
+		if (!(toInsert->identifier = strdup(identifier)))
+			ERROR("", __LINE__, TRUE); 				// out of memory
+	} else {
+		toInsert->identifier = NULL;
+	}
+		
+	toInsert->type = type;
+	toInsert->value.intVal = 0;
+	toInsert->location = NULL;
+	toInsert->functionType = UNKNOWN;
+	toInsert->parameterListHead = NULL;
+	
+	toInsert->next = currTable->listHead;
+	currTable->listHead = toInsert;
+	
+	return toInsert;
+}
+
 /* Function: addParameter
  * Parameters: char *identifier, Type type, Symbol *currentFunction
  * Description: Adds a parameter to the given function then inserts it into the
