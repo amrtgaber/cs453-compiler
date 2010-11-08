@@ -1,16 +1,19 @@
-void reverse(char string[]);
-extern void exported(void);
+extern void print_int(int n);
+extern void print_string(char s[]);
 
 int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[100];
 char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
 
-void main(char c[]) {
+void main(void) {
 	x = 5;
+	print_int(x);
 	a = 42;
+	print_int(a);
 	x = a;
+	print_int(x);
+	print_int(a);
 	
-	reverse(c);
-	exported();
+	print_int(100);
 }
 
 /*extern char permutation(char string[]);

@@ -99,6 +99,7 @@ Symbol *insert(char *identifier, Type type) {
 		
 	toInsert->type = type;
 	toInsert->value.intVal = 0;
+	toInsert->location = NULL;
 	toInsert->functionType = UNKNOWN;
 	toInsert->parameterListHead = NULL;
 	
@@ -198,6 +199,7 @@ void popSymbolTable() {
 	if (_stack->listHead) {
 		for(rear = _stack->listHead, front = rear->next; front; front = front->next) {
 			free(rear->identifier);
+			free(rear->location);
 			freeParameterList(rear->parameterListHead);
 			free(rear);
 			rear = front;

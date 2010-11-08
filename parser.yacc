@@ -22,7 +22,9 @@
 void 	typeError(char *errorMessage),
 		generateNewTempID(),
 		generateNewLabelID(),
-		declareGlobalVariables(SyntaxTree *tree);
+		declareGlobalVariables(SyntaxTree *tree),
+		writeCode(Code *code),
+		allocateStackSpace(SyntaxTree *declaration, int offset);
 Code	*constructCode(SyntaxTree *tree);
 
 /************************
@@ -42,7 +44,8 @@ char	*_currID = NULL,
 		_tempID[15],				// up to 10 billion temps > unsigned int max
 		_labelID[16];				// up to 10 billion labels > unsigned int max
 unsigned int	_tempNum = 0,
-				_labelNum = 0;
+				_labelNum = 0,
+				_stackSize = 0;
 Type	_currType = UNKNOWN,
 		_currPType = UNKNOWN;
 FunctionType _currFType = F_UNKNOWN;
@@ -371,7 +374,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
 			  
 			  printf(".text\n\n");
-			  printf("%s:\n", _currFID);
+			  printf("_%s:\n", _currFID);
 			  
 			  // TODO function prologue
 			
@@ -397,18 +400,40 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  statementOpt '}' 
 			{ 
 			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
+			  SyntaxTree *declarations = $5;
 			  
 			  printf(".text\n\n");
-			  printf("%s:\n", _currFID);
 			
+			  if (strcmp("main", _currFID) == 0)
+				  printf("main:\n");
+			  else
+				  printf("_%s:\n", _currFID);
+			
+			  _stackSize = 8;
+			  allocateStackSpace(declarations, 8);
 			  // TODO function prologue
+			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
+			  printf("\tsw\t$ra, 0($sp)\n");
+			  printf("\tsw\t$fp, 4($sp)\n");
+			  printf("\taddu\t$fp, $sp, %d\n\n", _stackSize);
+			  // store params/locals
+			  // for each param/locals
+			  // 	move fp to param's location on current stack
+			  // 	fp += 4
 
 			  Code *code = constructCode(function);
+			
+			  writeCode(code);
 			  
-			  printf("\nTHREE ADDRESS CODE:\n\n");
-			  printCode(code);
+			  //printf("\nTHREE ADDRESS CODE:\n\n");
+			  //printCode(code);
 			
 			  // TODO function epilogue
+			  // params automatically popped
+			  printf("\n\tlw\t$ra, 0($sp)\n");
+			  printf("\tlw\t$fp, 4($sp)\n");
+			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
+			  printf("\tjr\t$ra\n");
 			
 			  #if defined(DEBUG_SYNTAX) || defined(DEBUG_ALL)
 			  	  printf("\nSYNTAX TREE:\n\n");
@@ -938,6 +963,18 @@ main() {
 	yyparse();
 	popSymbolTable();				// free global symbol table
 	
+	printf("\n\n_print_int:\n");
+	printf("\tli\t$v0, 1\n");
+	printf("\tlw\t$a0, 0($sp)\n");
+	printf("\tsyscall\n");
+	printf("\tjr\t$ra\n");
+	
+	printf("\n_print_string:\n");
+	printf("\tli\t$v0, 4\n");
+	printf("\tlw\t$a0, 0($sp)\n");
+	printf("\tsyscall\n");
+	printf("\tjr\t$ra\n");
+	
 	if (_generateCode)
 		return 0;					// success
 	return 1;						// failure
@@ -977,11 +1014,15 @@ void declareGlobalVariables(SyntaxTree *tree) {
 		return;
 	}
 
-	printf("%s:\n", currSymbol->identifier);
+	if (!(currSymbol->location = malloc(strlen(currSymbol->identifier) + 2)))
+		ERROR(NULL, __LINE__, TRUE);				//out of memory
+		
+	sprintf(currSymbol->location, "_%s", currSymbol->identifier);
+	printf("%s:\n", currSymbol->location);
 	
 	switch (currSymbol->type) {
 		case CHAR_TYPE:
-			printf("\t.byte '\\0'\n", currSymbol->value.charVal);
+			printf("\t.word '\\0'\n", currSymbol->value.charVal);
 			break;
 		case INT_TYPE:
 			printf("\t.word 0\n", currSymbol->value.intVal);
@@ -1000,6 +1041,25 @@ void declareGlobalVariables(SyntaxTree *tree) {
 	declareGlobalVariables(tree->right);
 }
 
+/* Function: allocateStackSpace
+ * Parameters: SyntaxTree *declaration, int offset
+ * Description: Sets the stack offset for each declaration.
+ * Returns: none
+ * Preconditions: On the first call to this function the offset is 8.
+ */
+void allocateStackSpace(SyntaxTree *declaration, int offset) {
+	if (!declaration)
+		return;
+	
+	if (!(declaration->symbol->location = malloc(10 * sizeof(char))))
+		ERROR(NULL, __LINE__, TRUE);							//out of memory
+	
+	sprintf(declaration->symbol->location, "%d($sp)", offset);
+	
+	_stackSize = offset + 4;
+	allocateStackSpace(declaration->left, offset + 4);
+}
+
 /* Function: constructCode
  * Parameters: SyntaxTree *tree
  * Description: Converts the given syntax tree into a three address code list.
@@ -1008,7 +1068,7 @@ void declareGlobalVariables(SyntaxTree *tree) {
  */
 Code *constructCode(SyntaxTree *tree) {
 	if (!tree)
-		return;
+		return NULL;
 	
 	constructCode(tree->left);
 	constructCode(tree->right);
@@ -1110,6 +1170,124 @@ Code *constructCode(SyntaxTree *tree) {
 	}
 	
 	return tree->code;
+}
+
+/* Function: writeCode
+ * Parameters: Code *code
+ * Description: Converts the given three address code list into mips assemblycode.
+ * Returns: none
+ * Preconditions: none
+ */
+void writeCode(Code *code) {
+	if (!code)
+		return;
+	
+	switch (code->opcode) {
+		/*case ADD_OP:
+			break;
+		case SUB_OP:
+			break;
+		case MULT_OP:
+			break;
+		case DIV_OP:
+			break;
+		case NEG_OP:
+			break;
+		case EQUAL_OP:
+			break;
+		case NOT_EQUAL_OP:
+			break;
+		case GREATER_THAN_OP:
+			break;
+		case GREATER_EQUAL_OP:
+			break;
+		case LESS_THAN_OP:
+			break;
+		case LESS_EQUAL_OP:
+			break;
+		case AND_OP:
+			break;
+		case OR_OP:
+			break;
+		case BRANCH_EQUAL:
+			break;
+		case BRANCH_NOT_EQUAL:
+			break;
+		case BRANCH_LESS:
+			break;
+		case BRANCH_LESS_EQUAL:
+			break;
+		case BRANCH_GREATER:
+			break;
+		case BRANCH_GREATER_EQUAL:
+			break;
+		case JUMP:
+			break;
+		case WHILE_OP:
+			break;
+		case RETURN_OP:
+			break;*/
+		case ASSIGNMENT_OP:
+			printf("\n");
+			if (code->source1->location) {
+				printf("\tlw\t$t0, %s\n", code->source1->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+			} else {
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+					printf("\tsw\t$t0, %s\n", code->destination->location);
+				} else if (code->source1->type == INT_TYPE) {
+					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					printf("\tsw\t$t0, %s\n", code->destination->location);
+				} else {
+					; // arrays?
+				}
+			}
+			break;
+		case ENTER:
+			printf("\n");
+			printf("\tjal\t_%s\n", code->source1->identifier);
+			break;
+		case LEAVE:
+			break;
+		case PUSH_PARAM:
+			printf("\n");
+			if (strcmp(code->next->source1->identifier, "print_int") == 0
+					|| strcmp(code->next->source1->identifier, "print_string") == 0) {
+				if (code->source1->location) {
+					printf("\tlw\t$a0, %s\n", code->source1->location);
+				} else {
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tli\t$a0, '%c'\n", code->source1->value.charVal);
+					else if (code->source1->type == INT_TYPE)
+						printf("\tli\t$a0, %d\n", code->source1->value.intVal);
+					else
+						;	// string param
+				}
+			} else {
+				printf("\taddiu\t$sp, $sp, 4\n");
+				_stackSize += 4;
+				if (code->source1->location) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tsw\t$t0, 0($sp)\n");
+				} else {
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+					else if (code->source1->type == INT_TYPE)
+						printf("\tli\t0($sp), %d\n", code->source1->value.intVal);
+					else
+						;	// string param
+				}
+				printf("\tsw\t$t0, 0($sp)\n");
+			}
+			break;
+		case DECLARATION_OP:
+			break;
+		default:
+			break;
+	}
+	
+	writeCode(code->next);
 }
 
 /* Function: typeError
