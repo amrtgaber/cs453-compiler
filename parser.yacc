@@ -13,6 +13,11 @@
 #include "code.h"
 #include "functionCall.h"
 
+typedef struct StringLiteral {
+	Symbol 	*symbol;
+	struct StringLiteral *next;
+} StringLiteral;
+
 /************************
  *						*
  * 		prototypes		*
@@ -24,7 +29,9 @@ void 	typeError(char *errorMessage),
 		generateNewLabelID(),
 		declareGlobalVariables(SyntaxTree *tree),
 		writeCode(Code *code),
-		allocateStackSpace(SyntaxTree *declaration, int offset);
+		allocateStackSpace(SyntaxTree *declaration, int offset),
+		insertStringLiteral(Symbol *stringLiteral),
+		popStringLiterals(StringLiteral *stringLiteral);
 Code	*constructCode(SyntaxTree *tree);
 
 /************************
@@ -50,6 +57,7 @@ Type	_currType = UNKNOWN,
 		_currPType = UNKNOWN;
 FunctionType _currFType = F_UNKNOWN;
 Parameter *_currParam = NULL;
+StringLiteral *_stringLiterals = NULL;
 %}
 
 %union {
@@ -411,10 +419,10 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			
 			  _stackSize = 8;
 			  allocateStackSpace(declarations, 8);
-			  // TODO function prologue
+
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
-			  printf("\tsw\t$ra, 0($sp)\n");
-			  printf("\tsw\t$fp, 4($sp)\n");
+			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
+			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$fp, $sp, %d\n\n", _stackSize);
 			  // store params/locals
 			  // for each param/locals
@@ -428,10 +436,9 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  //printf("\nTHREE ADDRESS CODE:\n\n");
 			  //printCode(code);
 			
-			  // TODO function epilogue
 			  // params automatically popped
-			  printf("\n\tlw\t$ra, 0($sp)\n");
-			  printf("\tlw\t$fp, 4($sp)\n");
+			  printf("\n\tlw\t$ra, %d($sp)\n", _stackSize - 4);
+			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tjr\t$ra\n");
 			
@@ -804,9 +811,16 @@ expr:		  '-' expr %prec UMINUS
 			{
 			  $$.type = CHAR_ARRAY;
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, CHAR_ARRAY);
-			  // TODO store length of string
+			  Symbol *newSymbol = insertGlobal(_tempID, CHAR_ARRAY);
+			  newSymbol->value.strVal = $1;
 			  newSymbol->functionType = NON_FUNCTION;
+			  
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+
+			 
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
+			  insertStringLiteral(newSymbol);
 			  $$.tree = createTree(SYMBOL, newSymbol, NULL, NULL);
 			}
 			;
@@ -961,9 +975,14 @@ multiExprOpt: multiExprOpt ',' args
 main() {
 	pushSymbolTable();				// initialize global symbol table
 	yyparse();
+	
+	printf("\n.data\n");
+	popStringLiterals(_stringLiterals);
+	
 	popSymbolTable();				// free global symbol table
 	
-	printf("\n\n_print_int:\n");
+	printf("\n.text\n\n");
+	printf("_print_int:\n");
 	printf("\tli\t$v0, 1\n");
 	printf("\tlw\t$a0, 0($sp)\n");
 	printf("\tsyscall\n");
@@ -978,6 +997,45 @@ main() {
 	if (_generateCode)
 		return 0;					// success
 	return 1;						// failure
+}
+
+/* Function: insertStringLiteral
+ * Parameters: Symbol *stringLiteral
+ * Description: Adds the given string literal to the list of string literals.
+ * Returns: none
+ * Preconditions: none
+ */
+void insertStringLiteral(Symbol *stringLiteral) {
+	if (!stringLiteral)
+		return;
+	
+	StringLiteral *newStringLiteral = NULL;
+	
+	if (!(newStringLiteral = malloc(sizeof(StringLiteral))))
+		ERROR(NULL, __LINE__, TRUE);						// out of memory
+	
+	newStringLiteral->symbol = stringLiteral;
+	
+	newStringLiteral->next = _stringLiterals;
+	_stringLiterals = newStringLiteral;
+}
+
+/* Function: insertStringLiteral
+ * Parameters: Symbol *stringLiteral
+ * Description: Adds the given string literal to the list of string literals.
+ * Returns: none
+ * Preconditions: none
+ */
+void popStringLiterals(StringLiteral *stringLiteral) {
+	if (!stringLiteral)
+		return;
+	
+	printf("\n");
+	printf("_%s:\n", stringLiteral->symbol->identifier);
+	printf("\t.asciiz\t%s\n", stringLiteral->symbol->value.strVal);
+	
+	popStringLiterals(stringLiteral->next);
+	free(stringLiteral);
 }
 
 /* Function: yyError
@@ -1022,7 +1080,7 @@ void declareGlobalVariables(SyntaxTree *tree) {
 	
 	switch (currSymbol->type) {
 		case CHAR_TYPE:
-			printf("\t.word '\\0'\n", currSymbol->value.charVal);
+			printf("\t.byte 0\n", currSymbol->value.charVal);
 			break;
 		case INT_TYPE:
 			printf("\t.word 0\n", currSymbol->value.intVal);
@@ -1234,8 +1292,14 @@ void writeCode(Code *code) {
 				printf("\tsw\t$t0, %s\n", code->destination->location);
 			} else {
 				if (code->source1->type == CHAR_TYPE) {
-					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-					printf("\tsw\t$t0, %s\n", code->destination->location);
+					if (code->source1->value.charVal == '\n')
+						printf("\tli\t$t0, 12\n");
+					else if (code->source1->value.charVal == '\0')
+						printf("\tli\t$t0, 0\n");
+					else
+						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+					
+					printf("\tsb\t$t0, %s\n", code->destination->location);
 				} else if (code->source1->type == INT_TYPE) {
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
 					printf("\tsw\t$t0, %s\n", code->destination->location);
@@ -1252,34 +1316,28 @@ void writeCode(Code *code) {
 			break;
 		case PUSH_PARAM:
 			printf("\n");
-			if (strcmp(code->next->source1->identifier, "print_int") == 0
-					|| strcmp(code->next->source1->identifier, "print_string") == 0) {
-				if (code->source1->location) {
-					printf("\tlw\t$a0, %s\n", code->source1->location);
+			
+			if (code->source1->location) {
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tsubu\t$sp, $sp, 1\n");
+					_stackSize += 1;
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else if (code->source1->type == INT_TYPE) {
+					printf("\tsubu\t$sp, $sp, 4\n");
+					_stackSize += 4;
+					printf("\tlw\t$t0, %s\n", code->source1->location);
 				} else {
-					if (code->source1->type == CHAR_TYPE)
-						printf("\tli\t$a0, '%c'\n", code->source1->value.charVal);
-					else if (code->source1->type == INT_TYPE)
-						printf("\tli\t$a0, %d\n", code->source1->value.intVal);
-					else
-						;	// string param
+					printf("\tsubu\t$sp, $sp, 4\n");
+					_stackSize += 4;
+					printf("\tla\t$t0, %s\n", code->source1->location);
 				}
 			} else {
-				printf("\taddiu\t$sp, $sp, 4\n");
-				_stackSize += 4;
-				if (code->source1->location) {
-					printf("\tlw\t$t0, %s\n", code->source1->location);
-					printf("\tsw\t$t0, 0($sp)\n");
-				} else {
-					if (code->source1->type == CHAR_TYPE)
-						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-					else if (code->source1->type == INT_TYPE)
-						printf("\tli\t0($sp), %d\n", code->source1->value.intVal);
-					else
-						;	// string param
-				}
-				printf("\tsw\t$t0, 0($sp)\n");
+				if (code->source1->type == CHAR_TYPE)
+					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+				else
+					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
 			}
+			printf("\tsw\t$t0, 0($sp)\n");
 			break;
 		case DECLARATION_OP:
 			break;

@@ -5,15 +5,26 @@ int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[1
 char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
 
 void main(void) {
+	char1 = '#';
+	char2 = '\n';
 	x = 5;
+	print_string("x = ");
 	print_int(x);
+	print_string("\n");
 	a = 42;
+	print_string("a = ");
 	print_int(a);
+	print_string("\n");
 	x = a;
+	print_string("x = ");
 	print_int(x);
+	print_string("\n");
+	print_string("a = ");
 	print_int(a);
-	
+	print_string("\n");
+
 	print_int(100);
+	print_string("\n");
 }
 
 /*extern char permutation(char string[]);
