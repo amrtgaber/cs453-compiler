@@ -110,11 +110,11 @@ declaration:  type varDcl multiVarDcl
 			  printf("\n");
 			}
 			| storeExtern type storeFID '(' insertFunc paramTypes ')'
-			      multiProtDcl makeProt // TODO reset _currFType
-			| type storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt
+				multiProtDcl makeProt { _currFType = F_UNKNOWN; }
+			| type storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt { _currFType = F_UNKNOWN; }
 			| storeExtern storeVoid storeFID '(' insertFunc paramTypes ')'
-			      multiProtDcl makeProt // TODO reset _currFType
-			| storeVoid storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt
+			    multiProtDcl makeProt { _currFType = F_UNKNOWN; }
+			| storeVoid storeFID '(' insertFunc paramTypes ')' multiProtDcl makeProt { _currFType = F_UNKNOWN; }
 			;
 			
 storeFID:	  ID
@@ -410,7 +410,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
 			  SyntaxTree *declarations = $5;
 			  
-			  printf(".text\n\n");
+			  printf("\n.text\n\n");
 			
 			  if (strcmp("main", _currFID) == 0)
 				  printf("main:\n");
@@ -424,10 +424,13 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$fp, $sp, %d\n\n", _stackSize);
-			  // store params/locals
-			  // for each param/locals
-			  // 	move fp to param's location on current stack
-			  // 	fp += 4
+			  
+			  // store parameters
+			  int i, j;
+			  for(i = 12, j = 0; i <= _stackSize; i += 4, j += 4) {
+				printf("\tlw\t$t0, %d($fp)\n", j);
+				printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
+			  }
 
 			  Code *code = constructCode(function);
 			
@@ -974,6 +977,7 @@ multiExprOpt: multiExprOpt ',' args
  */
 main() {
 	pushSymbolTable();				// initialize global symbol table
+
 	yyparse();
 	
 	printf("\n.data\n");
@@ -1288,19 +1292,24 @@ void writeCode(Code *code) {
 		case ASSIGNMENT_OP:
 			printf("\n");
 			if (code->source1->location) {
+				printf("\t# %s = %s\n", code->destination->identifier, code->source1->identifier);
 				printf("\tlw\t$t0, %s\n", code->source1->location);
 				printf("\tsw\t$t0, %s\n", code->destination->location);
 			} else {
 				if (code->source1->type == CHAR_TYPE) {
-					if (code->source1->value.charVal == '\n')
-						printf("\tli\t$t0, 12\n");
-					else if (code->source1->value.charVal == '\0')
-						printf("\tli\t$t0, 0\n");
-					else
+					if (code->source1->value.charVal == '\n') {
+						printf("\t# %s = '\\n'\n", code->destination->identifier);
+						printf("\tli\t$t0, 12		# 12 is ascii value for '\\n'\n");
+					} else if (code->source1->value.charVal == '\0') {
+						printf("\t# %s = '\\0'\n", code->destination->identifier);
+						printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+					} else {
+						printf("\t# %s = %c\n", code->destination->identifier, code->source1->value.charVal);
 						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-					
+					}
 					printf("\tsb\t$t0, %s\n", code->destination->location);
 				} else if (code->source1->type == INT_TYPE) {
+					printf("\t# %s = %d\n", code->destination->identifier, code->source1->value.intVal);
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
 					printf("\tsw\t$t0, %s\n", code->destination->location);
 				} else {
@@ -1310,6 +1319,7 @@ void writeCode(Code *code) {
 			break;
 		case ENTER:
 			printf("\n");
+			printf("\t# calling %s\n", code->source1->identifier);
 			printf("\tjal\t_%s\n", code->source1->identifier);
 			break;
 		case LEAVE:
@@ -1318,6 +1328,7 @@ void writeCode(Code *code) {
 			printf("\n");
 			
 			if (code->source1->location) {
+				printf("\t# pushing parameter %s\n", code->source1->identifier);
 				if (code->source1->type == CHAR_TYPE) {
 					printf("\tsubu\t$sp, $sp, 1\n");
 					_stackSize += 1;
@@ -1332,10 +1343,13 @@ void writeCode(Code *code) {
 					printf("\tla\t$t0, %s\n", code->source1->location);
 				}
 			} else {
-				if (code->source1->type == CHAR_TYPE)
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
 					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-				else
+				} else {
+					printf("\t# pushing parameter %d\n", code->source1->value.intVal);
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+				}
 			}
 			printf("\tsw\t$t0, 0($sp)\n");
 			break;
