@@ -27,7 +27,6 @@ void main(void) {
 	print_string("\n");
 }
 
-
 /*extern char permutation(char string[]);
 
 char permutationFound;
