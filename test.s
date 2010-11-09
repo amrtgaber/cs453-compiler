@@ -135,9 +135,57 @@ main:
 	# calling printX
 	jal	_printX
 
-	lw	$ra, 32($sp)
-	lw	$fp, 28($sp)
-	addu	$sp, $sp, 36
+	# pushing parameter intArray3
+	subu	$sp, $sp, 4
+	la	$t0, _intArray3
+	sw	$t0, 0($sp)
+
+	# calling takeIntArray
+	jal	_takeIntArray
+
+	# pushing parameter charArray2
+	subu	$sp, $sp, 4
+	la	$t0, _charArray2
+	sw	$t0, 0($sp)
+
+	# calling takeCharArray
+	jal	_takeCharArray
+
+	lw	$ra, 40($sp)
+	lw	$fp, 36($sp)
+	addu	$sp, $sp, 44
+	jr	$ra
+
+.text
+
+_takeIntArray:
+	subu	$sp, $sp, 12
+	sw	$ra, 8($sp)
+	sw	$fp, 4($sp)
+	addu	$fp, $sp, 12
+
+	lw	$t0, 0($fp)
+	sw	$t0, 0($sp)
+
+	lw	$ra, 8($sp)
+	lw	$fp, 4($sp)
+	addu	$sp, $sp, 12
+	jr	$ra
+
+.text
+
+_takeCharArray:
+	subu	$sp, $sp, 12
+	sw	$ra, 8($sp)
+	sw	$fp, 4($sp)
+	addu	$fp, $sp, 12
+
+	lw	$t0, 0($fp)
+	sw	$t0, 0($sp)
+
+	lw	$ra, 8($sp)
+	lw	$fp, 4($sp)
+	addu	$sp, $sp, 12
 	jr	$ra
 
 .text
@@ -229,7 +277,6 @@ _printX:
 	addu	$fp, $sp, 12
 
 	lw	$t0, 0($fp)
-	+
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp12

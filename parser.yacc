@@ -409,7 +409,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			{ 
 			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
 			  SyntaxTree *declarations = $5;
-			  
+			
 			  printf("\n.text\n\n");
 			
 			  if (strcmp("main", _currFID) == 0)
@@ -418,7 +418,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  printf("_%s:\n", _currFID);
 			
 			  _stackSize = 8;
-			  allocateStackSpace(declarations, 8);
+			  allocateStackSpace(declarations, _stackSize);
 
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
@@ -1222,9 +1222,11 @@ Code *constructCode(SyntaxTree *tree) {
 				while (tail->next)
 					tail = tail->next;
 
-				tail->next = tree->right->code;
+				if (tree->right)
+					tail->next = tree->right->code;
 			} else {
-				tree->code = tree->right->code;
+				if (tree->right)
+					tree->code = tree->right->code;
 			}
 			break;
 		default:
@@ -1320,7 +1322,10 @@ void writeCode(Code *code) {
 		case ENTER:
 			printf("\n");
 			printf("\t# calling %s\n", code->source1->identifier);
-			printf("\tjal\t_%s\n", code->source1->identifier);
+			if (strcmp(code->source1->identifier, "main") == 0)
+				printf("\tjal\tmain\n", code->source1->identifier);
+			else
+				printf("\tjal\t_%s\n", code->source1->identifier);
 			break;
 		case LEAVE:
 			break;

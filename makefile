@@ -32,4 +32,4 @@ parser.yacc:
 
 .PHONY: clean
 clean:
-	rm -f compile lex.yy.c y.tab.c y.tab.h *.o
+	rm -rf compile lex.yy.c y.tab.c y.tab.h *.o compile.dSYM

@@ -1,7 +1,8 @@
 extern void print_int(int n);
 extern void print_string(char s[]);
 
-void printX(int x), printA(int a), make10(int n), make5(int n);
+void printX(int x), printA(int a), make10(int n), make5(int n), takeIntArray(int n[]),
+		takeCharArray(char c[]);
 
 int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[100];
 char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
@@ -23,6 +24,17 @@ void main(void) {
 	
 	make10(x);
 	printX(x);
+	
+	takeIntArray(intArray3);
+	takeCharArray(charArray2);
+}
+
+void takeIntArray(int n[]) {
+	
+}
+
+void takeCharArray(char c[]) {
+	
 }
 
 void make10(int n) {
