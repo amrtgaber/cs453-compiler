@@ -30,7 +30,7 @@ void main(void) {
 }
 
 void takeIntArray(int n[]) {
-	
+	return;
 }
 
 void takeCharArray(char c[]) {
@@ -43,6 +43,8 @@ void make10(int n) {
 	print_string("making 10...\n");
 	n = 10;
 	x = 10;
+	return;
+	main();
 }
 
 void make5(int n) {
