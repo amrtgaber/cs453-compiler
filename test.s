@@ -151,6 +151,7 @@ main:
 	# calling takeCharArray
 	jal	_takeCharArray
 
+_mainReturn:
 	lw	$ra, 40($sp)
 	lw	$fp, 36($sp)
 	addu	$sp, $sp, 44
@@ -167,6 +168,10 @@ _takeIntArray:
 	lw	$t0, 0($fp)
 	sw	$t0, 0($sp)
 
+	# return;
+	j	_takeIntArrayReturn
+
+_takeIntArrayReturn:
 	lw	$ra, 8($sp)
 	lw	$fp, 4($sp)
 	addu	$sp, $sp, 12
@@ -183,6 +188,7 @@ _takeCharArray:
 	lw	$t0, 0($fp)
 	sw	$t0, 0($sp)
 
+_takeCharArrayReturn:
 	lw	$ra, 8($sp)
 	lw	$fp, 4($sp)
 	addu	$sp, $sp, 12
@@ -231,6 +237,13 @@ _make10:
 	li	$t0, 10
 	sw	$t0, _x
 
+	# return;
+	j	_make10Return
+
+	# calling main
+	jal	main
+
+_make10Return:
 	lw	$ra, 20($sp)
 	lw	$fp, 16($sp)
 	addu	$sp, $sp, 24
@@ -263,6 +276,7 @@ _make5:
 	lw	$t0, 8($sp)
 	sw	$t0, _x
 
+_make5Return:
 	lw	$ra, 12($sp)
 	lw	$fp, 8($sp)
 	addu	$sp, $sp, 16
@@ -303,6 +317,7 @@ _printX:
 	# calling print_string
 	jal	_print_string
 
+_printXReturn:
 	lw	$ra, 20($sp)
 	lw	$fp, 16($sp)
 	addu	$sp, $sp, 24
@@ -343,6 +358,7 @@ _printA:
 	# calling print_string
 	jal	_print_string
 
+_printAReturn:
 	lw	$ra, 20($sp)
 	lw	$fp, 16($sp)
 	addu	$sp, $sp, 24

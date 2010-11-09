@@ -439,8 +439,9 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  //printf("\nTHREE ADDRESS CODE:\n\n");
 			  //printCode(code);
 			
+			  printf("\n_%sReturn:\n", _currFID);
 			  // params automatically popped
-			  printf("\n\tlw\t$ra, %d($sp)\n", _stackSize - 4);
+			  printf("\tlw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tjr\t$ra\n");
@@ -454,7 +455,8 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  	  printSymbolTable();
 			  #endif
 
-			  popSymbolTable(); }
+			  popSymbolTable();
+			}
 			;
 
 multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
@@ -519,6 +521,8 @@ statement:	  IF '(' expr ')' statement
 					  typeError(_errorMessage);
 				  }
 			  }
+			
+			  $$ = createTree(RETURN_TREE, recallGlobal(_currFID), NULL, NULL);
 			}
 			| assignment ';' { $$ = $1; }
 			| storeID '('')' ';'
@@ -1165,9 +1169,13 @@ Code *constructCode(SyntaxTree *tree) {
 		case IF_TREE:
 			break;
 		case WHILE_TREE:
-			break;
-		case RETURN_TREE:
 			break;*/
+		case RETURN_TREE:
+			if (!tree->left)
+				tree->code = createCode(RETURN_OP, NULL, NULL, tree->symbol);
+			else
+				; // return expr
+			break;
 		case ASSIGNMENT:
 			tree->code = createCode(ASSIGNMENT_OP, tree->right->symbol, NULL, tree->left->symbol);
 			break;
@@ -1288,9 +1296,16 @@ void writeCode(Code *code) {
 		case JUMP:
 			break;
 		case WHILE_OP:
-			break;
-		case RETURN_OP:
 			break;*/
+		case RETURN_OP:
+			printf("\n");
+			if (!code->source1) {
+				printf("\t# return\n");
+				printf("\tj\t_%sReturn\n", code->destination->identifier);
+			} else {
+				; // return expr
+			}
+			break;
 		case ASSIGNMENT_OP:
 			printf("\n");
 			if (code->source1->location) {
