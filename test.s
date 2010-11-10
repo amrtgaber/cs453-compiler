@@ -47,7 +47,6 @@ main:
 	sw	$fp, 0($sp)
 	addu	$fp, $sp, 8
 
-
 	# char1 = #
 	li	$t0, '#'
 	sb	$t0, _char1
@@ -116,8 +115,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	subu	$sp, $sp, 4
 	# pushing parameter 100
+	subu	$sp, $sp, 4
 	li	$t0, 100
 	sw	$t0, 0($sp)
 
@@ -195,8 +194,7 @@ _takeIntArray:
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-
-	lw	$t0, 0($fp)
+	lw	$t0, 0($fp)		# storing parameter 1
 	sw	$t0, 0($sp)
 
 	# return
@@ -215,8 +213,7 @@ _takeCharArray:
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-
-	lw	$t0, 0($fp)
+	lw	$t0, 0($fp)		# storing parameter 1
 	sw	$t0, 0($sp)
 
 _takeCharArrayReturn:
@@ -232,9 +229,23 @@ _make10:
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-
-	lw	$t0, 0($fp)
+	lw	$t0, 0($fp)		# storing parameter 1
 	sw	$t0, 0($sp)
+
+	# pushing parameter charArray2
+	la	$t0, _charArray2
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter int3
+	lw	$t0, _int3
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter char3
+	lb	$t0, _char3
+	subu	$sp, $sp, 4
+	sb	$t0, 0($sp)
 
 	# pushing parameter x
 	lw	$t0, _x
@@ -245,7 +256,22 @@ _make10:
 	jal	_make5
 
 	# popping pushed parameters
-	addu	$sp, $sp, 4
+	addu	$sp, $sp, 16
+
+	# pushing parameter charArray2
+	la	$t0, _charArray2
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter int3
+	lw	$t0, _int3
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter char3
+	lb	$t0, _char3
+	subu	$sp, $sp, 4
+	sb	$t0, 0($sp)
 
 	# pushing parameter x
 	lw	$t0, _x
@@ -256,7 +282,7 @@ _make10:
 	jal	_make5
 
 	# popping pushed parameters
-	addu	$sp, $sp, 4
+	addu	$sp, $sp, 16
 
 	# pushing parameter _temp7
 	la	$t0, __temp7
@@ -280,9 +306,6 @@ _make10:
 	# return
 	j	_make10Return
 
-	# calling main
-	jal	main
-
 _make10Return:
 	lw	$ra, 8($sp)
 	lw	$fp, 4($sp)
@@ -292,12 +315,17 @@ _make10Return:
 .text
 
 _make5:
-	subu	$sp, $sp, 12
-	sw	$ra, 8($sp)
-	sw	$fp, 4($sp)
-	addu	$fp, $sp, 12
-
-	lw	$t0, 0($fp)
+	subu	$sp, $sp, 24
+	sw	$ra, 20($sp)
+	sw	$fp, 16($sp)
+	addu	$fp, $sp, 24
+	lw	$t0, 0($fp)		# storing parameter 1
+	sw	$t0, 12($sp)
+	lb	$t0, 4($fp)		# storing parameter 2
+	sb	$t0, 8($sp)
+	lw	$t0, 8($fp)		# storing parameter 3
+	sw	$t0, 4($sp)
+	lw	$t0, 12($fp)		# storing parameter 4
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp10
@@ -313,16 +341,16 @@ _make5:
 
 	# n = 5
 	li	$t0, 5
-	sw	$t0, 0($sp)
+	sw	$t0, 12($sp)
 
 	# x = n
-	lw	$t0, 0($sp)
+	lw	$t0, 12($sp)
 	sw	$t0, _x
 
 _make5Return:
-	lw	$ra, 8($sp)
-	lw	$fp, 4($sp)
-	addu	$sp, $sp, 12
+	lw	$ra, 20($sp)
+	lw	$fp, 16($sp)
+	addu	$sp, $sp, 24
 	jr	$ra
 
 .text
@@ -332,8 +360,7 @@ _printX:
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-
-	lw	$t0, 0($fp)
+	lw	$t0, 0($fp)		# storing parameter 1
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp12
@@ -382,8 +409,7 @@ _printA:
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-
-	lw	$t0, 0($fp)
+	lw	$t0, 0($fp)		# storing parameter 1
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp14
