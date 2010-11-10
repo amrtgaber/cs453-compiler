@@ -80,7 +80,7 @@ StringLiteral *_stringLiterals = NULL;
 %type	<integer>		exprOpt INTCON
 %type 	<string>		ID storeID STRCON
 %type 	<tree>			assignment statement statementOpt paramTypes arrayTypeOpt
-							args varDcl multiVarDcl
+							args varDcl multiVarDcl multiParam multiExprOpt
 %type	<exprReturn>	expr multiFuncOpt
 
 %left LOGICOR
@@ -247,7 +247,19 @@ paramTypes:   initParam VOID
 			  
 			  _currParam = NULL;
 			
-			  $$ = $2;
+			
+			  SyntaxTree *tree = $3;
+			
+			  if (tree) {
+				  while (tree->left)
+					  tree = tree->left;
+			  
+			  	  tree->left = $2;
+			      $$ = $3;
+			  } else {
+				  $$ = $2;
+			  }
+			  
 			};
 
 storePType: CHAR
@@ -334,8 +346,8 @@ arrayTypeOpt: storePType ID
 			}
 			;
 
-multiParam:   multiParam ',' arrayTypeOpt
-			| /* empty */
+multiParam:   multiParam ',' arrayTypeOpt { $3->left = $1; $$ = $3; }
+			| /* empty */ { $$ = NULL; }
 			;
 
 insertFunc:	{
@@ -382,35 +394,48 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
 			  
 			  printf(".text\n\n");
+			
+			  #if defined(DEBUG_SYNTAX) || defined(DEBUG_ALL)
+			  	  printf("\nSYNTAX TREE:\n\n");
+			  	  printSyntaxTree(function, 0);
+			  #endif
+
+			  #if defined(DEBUG_SYMBOLS) || defined(DEBUG_ALL)
+			  	  printSymbolTable();
+			  #endif
+			
 			  printf("_%s:\n", _currFID);
 			  
 			  // TODO function prologue
 			
 			  Code *code = constructCode(function);
 			
-			  printf("\nTHREE ADDRESS CODE:\n\n");
-			  printCode(code);
+			  #if defined(DEBUG_CODE) || defined(DEBUG_ALL)
+			      printf("\nTHREE ADDRESS CODE:\n\n");
+			      printCode(code);
+			  #endif
 			
 			  // TODO function epilogue
-			
-			  #if defined(DEBUG_SYNTAX) || defined(DEBUG_ALL)
-			  	  printf("\nSYNTAX TREE:\n\n");
-			  	  printSyntaxTree(function, 0);
-			  #endif
-			
-			  #if defined(DEBUG_SYMBOLS) || defined(DEBUG_ALL)
-			  	  printSymbolTable();
-			  #endif
 					
 			  popSymbolTable();
 			}
 			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  statementOpt '}' 
 			{ 
-			  SyntaxTree *function = createTree(FUNCTION_ROOT, recallGlobal(_currFID), $5, $9);
+			  Symbol *currFunction = recallGlobal(_currFID);
+			  SyntaxTree *function = createTree(FUNCTION_ROOT, currFunction, $5, $9);
 			  SyntaxTree *declarations = $5;
 			
 			  printf("\n.text\n\n");
+			
+			  #if defined(DEBUG_SYNTAX) || defined(DEBUG_ALL)
+			  	  printf("\nSYNTAX TREE:\n\n");
+			  	  printSyntaxTree(function, 0);
+			  #endif
+
+			  #if defined(DEBUG_SYMBOLS) || defined(DEBUG_ALL)
+			  	  printSymbolTable();
+			  #endif
 			
 			  if (strcmp("main", _currFID) == 0)
 				  printf("main:\n");
@@ -418,26 +443,34 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  printf("_%s:\n", _currFID);
 			
 			  _stackSize = 8;
-			  _stackSize += allocateStackSpace(declarations, _stackSize);
+			  _stackSize += allocateStackSpace(declarations, 0);
 
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
-			  printf("\taddu\t$fp, $sp, %d\n\n", _stackSize);
+			  printf("\taddu\t$fp, $sp, %d\n", _stackSize);
 			  
-			  // store parameters
+			Parameter *currParam = currFunction->parameterListHead;
 			  int i, j;
 			  for(i = 12, j = 0; i <= _stackSize; i += 4, j += 4) {
-				printf("\tlw\t$t0, %d($fp)\n", j);
-				printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
+				if (currParam->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %d($fp)\t\t# storing parameter %d\n", j, (j + 4) / 4);
+					printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
+				} else {
+					printf("\tlw\t$t0, %d($fp)\t\t# storing parameter %d\n", j, (j + 4) / 4);
+					printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
+			    }
+				currParam = currParam->next;
 			  }
 
 			  Code *code = constructCode(function);
 			
 			  writeCode(code);
 			  
-			  //printf("\nTHREE ADDRESS CODE:\n\n");
-			  //printCode(code);
+			  #if defined(DEBUG_CODE) || defined(DEBUG_ALL)
+			      printf("\nTHREE ADDRESS CODE:\n\n");
+			      printCode(code);
+			  #endif
 			
 			  printf("\n_%sReturn:\n", _currFID);
 			  // params automatically popped
@@ -445,15 +478,6 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tjr\t$ra\n");
-			
-			  #if defined(DEBUG_SYNTAX) || defined(DEBUG_ALL)
-			  	  printf("\nSYNTAX TREE:\n\n");
-			  	  printSyntaxTree(function, 0);
-			  #endif
-			
-			  #if defined(DEBUG_SYMBOLS) || defined(DEBUG_ALL)
-			  	  printSymbolTable();
-			  #endif
 
 			  popSymbolTable();
 			}
@@ -585,8 +609,18 @@ statement:	  IF '(' expr ')' statement
 				  	  typeError(_errorMessage);
 			  	  }
 				
-				  $$ = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $4, NULL);
-				
+				  SyntaxTree *tree = $5;
+
+				  if (tree) {
+					  while (tree->left)
+						  tree = tree->left;
+
+				  	  tree->left = $4;
+				      $$ = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $5, NULL);
+				  } else {
+					  $$ = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $4, NULL);
+				  }
+
 		      	  popFunctionCall();
 		      }
 			}
@@ -967,8 +1001,8 @@ args:		  expr
 			}
 			;
 
-multiExprOpt: multiExprOpt ',' args
-			| /* empty */
+multiExprOpt: multiExprOpt ',' args { $3->left = $1; $$ = $3; }
+			| /* empty */ { $$ = NULL; }
 			;
 
 %%
@@ -1115,16 +1149,16 @@ void declareGlobalVariables(SyntaxTree *tree) {
  */
 int allocateStackSpace(SyntaxTree *declaration, int offset) {
 	if (!declaration)
-		return 0;
-	
-	offset = allocateStackSpace(declaration->left, offset);
+		return offset;
 	
 	if (!(declaration->symbol->location = malloc(10 * sizeof(char))))
 		ERROR(NULL, __LINE__, TRUE);							//out of memory
 	
 	sprintf(declaration->symbol->location, "%d($sp)", offset);
 	
-	return offset + 4;
+	//printf("Parameter %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
+	
+	return allocateStackSpace(declaration->left, offset + 4);
 }
 
 /* Function: constructCode
@@ -1344,17 +1378,17 @@ void writeCode(Code *code) {
 				printf("\tjal\t_%s\n", code->source1->identifier);
 			
 			Parameter *currParam = code->source1->parameterListHead;
+			int bytesToPop = 0;
 
-			if (currParam && currParam->type != VOID_TYPE)
+			if (currParam && currParam->type != VOID_TYPE) {
 				printf("\n\t# popping pushed parameters\n");
-
-			while (currParam && currParam->type != VOID_TYPE) {
-				if (currParam->type == CHAR_TYPE)
-					printf("\taddu\t$sp, $sp, 1\n");
-				else
-					printf("\taddu\t$sp, $sp, 4\n");
 				
-				currParam = currParam->next;
+				while (currParam) {
+					bytesToPop += 4;
+					currParam = currParam->next;
+				}
+				
+				printf("\taddu\t$sp, $sp, %d\n", bytesToPop);
 			}
 			break;
 		case LEAVE:
@@ -1366,26 +1400,30 @@ void writeCode(Code *code) {
 				printf("\t# pushing parameter %s\n", code->source1->identifier);
 				if (code->source1->type == CHAR_TYPE) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
-					printf("\tsubu\t$sp, $sp, 1\n");
+					printf("\tsubu\t$sp, $sp, 4\n");
+					printf("\tsb\t$t0, 0($sp)\n");
 				} else if (code->source1->type == INT_TYPE) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
+					printf("\tsw\t$t0, 0($sp)\n");
 				} else {
 					printf("\tla\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
+					printf("\tsw\t$t0, 0($sp)\n");
 				}
 			} else {
 				if (code->source1->type == CHAR_TYPE) {
-					printf("\tsubu\t$sp, $sp, 1\n");
 					printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
-					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-				} else {
 					printf("\tsubu\t$sp, $sp, 4\n");
+					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+					printf("\tsb\t$t0, 0($sp)\n");
+				} else {
 					printf("\t# pushing parameter %d\n", code->source1->value.intVal);
+					printf("\tsubu\t$sp, $sp, 4\n");
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					printf("\tsw\t$t0, 0($sp)\n");
 				}
 			}
-			printf("\tsw\t$t0, 0($sp)\n");
 			break;
 		case DECLARATION_OP:
 			break;
