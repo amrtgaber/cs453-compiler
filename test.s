@@ -65,45 +65,58 @@ main:
 	sw	$t0, _x
 
 	# pushing parameter x
-	subu	$sp, $sp, 4
 	lw	$t0, _x
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling printX
 	jal	_printX
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
 
 	# a = 42
 	li	$t0, 42
 	sw	$t0, _a
 
 	# pushing parameter a
-	subu	$sp, $sp, 4
 	lw	$t0, _a
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling printA
 	jal	_printA
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
 
 	# x = a
 	lw	$t0, _a
 	sw	$t0, _x
 
 	# pushing parameter x
-	subu	$sp, $sp, 4
 	lw	$t0, _x
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling printX
 	jal	_printX
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter a
-	subu	$sp, $sp, 4
 	lw	$t0, _a
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling printA
 	jal	_printA
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	subu	$sp, $sp, 4
 	# pushing parameter 100
 	li	$t0, 100
 	sw	$t0, 0($sp)
@@ -111,50 +124,68 @@ main:
 	# calling print_int
 	jal	_print_int
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter _temp6
-	subu	$sp, $sp, 4
 	la	$t0, __temp6
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling print_string
 	jal	_print_string
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter x
-	subu	$sp, $sp, 4
 	lw	$t0, _x
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling make10
 	jal	_make10
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter x
-	subu	$sp, $sp, 4
 	lw	$t0, _x
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling printX
 	jal	_printX
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter intArray3
-	subu	$sp, $sp, 4
 	la	$t0, _intArray3
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling takeIntArray
 	jal	_takeIntArray
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter charArray2
-	subu	$sp, $sp, 4
 	la	$t0, _charArray2
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling takeCharArray
 	jal	_takeCharArray
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 _mainReturn:
-	lw	$ra, 40($sp)
-	lw	$fp, 36($sp)
-	addu	$sp, $sp, 44
+	lw	$ra, 4($sp)
+	lw	$fp, 0($sp)
+	addu	$sp, $sp, 8
 	jr	$ra
 
 .text
@@ -168,7 +199,7 @@ _takeIntArray:
 	lw	$t0, 0($fp)
 	sw	$t0, 0($sp)
 
-	# return;
+	# return
 	j	_takeIntArrayReturn
 
 _takeIntArrayReturn:
@@ -206,47 +237,56 @@ _make10:
 	sw	$t0, 0($sp)
 
 	# pushing parameter x
-	subu	$sp, $sp, 4
 	lw	$t0, _x
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling make5
 	jal	_make5
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
 
 	# pushing parameter x
-	subu	$sp, $sp, 4
 	lw	$t0, _x
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling make5
 	jal	_make5
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter _temp7
-	subu	$sp, $sp, 4
 	la	$t0, __temp7
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling print_string
 	jal	_print_string
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# n = 10
 	li	$t0, 10
-	sw	$t0, 8($sp)
+	sw	$t0, 0($sp)
 
 	# x = 10
 	li	$t0, 10
 	sw	$t0, _x
 
-	# return;
+	# return
 	j	_make10Return
 
 	# calling main
 	jal	main
 
 _make10Return:
-	lw	$ra, 20($sp)
-	lw	$fp, 16($sp)
-	addu	$sp, $sp, 24
+	lw	$ra, 8($sp)
+	lw	$fp, 4($sp)
+	addu	$sp, $sp, 12
 	jr	$ra
 
 .text
@@ -261,25 +301,28 @@ _make5:
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp10
-	subu	$sp, $sp, 4
 	la	$t0, __temp10
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling print_string
 	jal	_print_string
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# n = 5
 	li	$t0, 5
-	sw	$t0, 8($sp)
+	sw	$t0, 0($sp)
 
 	# x = n
-	lw	$t0, 8($sp)
+	lw	$t0, 0($sp)
 	sw	$t0, _x
 
 _make5Return:
-	lw	$ra, 12($sp)
-	lw	$fp, 8($sp)
-	addu	$sp, $sp, 16
+	lw	$ra, 8($sp)
+	lw	$fp, 4($sp)
+	addu	$sp, $sp, 12
 	jr	$ra
 
 .text
@@ -294,33 +337,42 @@ _printX:
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp12
-	subu	$sp, $sp, 4
 	la	$t0, __temp12
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling print_string
 	jal	_print_string
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter x
+	lw	$t0, 0($sp)
 	subu	$sp, $sp, 4
-	lw	$t0, 8($sp)
 	sw	$t0, 0($sp)
 
 	# calling print_int
 	jal	_print_int
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter _temp13
-	subu	$sp, $sp, 4
 	la	$t0, __temp13
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling print_string
 	jal	_print_string
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 _printXReturn:
-	lw	$ra, 20($sp)
-	lw	$fp, 16($sp)
-	addu	$sp, $sp, 24
+	lw	$ra, 8($sp)
+	lw	$fp, 4($sp)
+	addu	$sp, $sp, 12
 	jr	$ra
 
 .text
@@ -335,33 +387,42 @@ _printA:
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp14
-	subu	$sp, $sp, 4
 	la	$t0, __temp14
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling print_string
 	jal	_print_string
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter a
+	lw	$t0, 0($sp)
 	subu	$sp, $sp, 4
-	lw	$t0, 8($sp)
 	sw	$t0, 0($sp)
 
 	# calling print_int
 	jal	_print_int
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# pushing parameter _temp15
-	subu	$sp, $sp, 4
 	la	$t0, __temp15
+	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
 	# calling print_string
 	jal	_print_string
 
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 _printAReturn:
-	lw	$ra, 20($sp)
-	lw	$fp, 16($sp)
-	addu	$sp, $sp, 24
+	lw	$ra, 8($sp)
+	lw	$fp, 4($sp)
+	addu	$sp, $sp, 12
 	jr	$ra
 
 .data

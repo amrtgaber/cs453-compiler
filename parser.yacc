@@ -29,9 +29,9 @@ void 	typeError(char *errorMessage),
 		generateNewLabelID(),
 		declareGlobalVariables(SyntaxTree *tree),
 		writeCode(Code *code),
-		allocateStackSpace(SyntaxTree *declaration, int offset),
 		insertStringLiteral(Symbol *stringLiteral),
 		popStringLiterals(StringLiteral *stringLiteral);
+int		allocateStackSpace(SyntaxTree *declaration, int offset);
 Code	*constructCode(SyntaxTree *tree);
 
 /************************
@@ -418,7 +418,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  printf("_%s:\n", _currFID);
 			
 			  _stackSize = 8;
-			  allocateStackSpace(declarations, _stackSize);
+			  _stackSize += allocateStackSpace(declarations, _stackSize);
 
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
@@ -1111,19 +1111,20 @@ void declareGlobalVariables(SyntaxTree *tree) {
  * Parameters: SyntaxTree *declaration, int offset
  * Description: Sets the stack offset for each declaration.
  * Returns: none
- * Preconditions: On the first call to this function the offset is 8.
+ * Preconditions: On the first call to this function the offset is 0.
  */
-void allocateStackSpace(SyntaxTree *declaration, int offset) {
+int allocateStackSpace(SyntaxTree *declaration, int offset) {
 	if (!declaration)
-		return;
+		return 0;
+	
+	offset = allocateStackSpace(declaration->left, offset);
 	
 	if (!(declaration->symbol->location = malloc(10 * sizeof(char))))
 		ERROR(NULL, __LINE__, TRUE);							//out of memory
 	
 	sprintf(declaration->symbol->location, "%d($sp)", offset);
 	
-	_stackSize = offset + 4;
-	allocateStackSpace(declaration->left, offset + 4);
+	return offset + 4;
 }
 
 /* Function: constructCode
@@ -1341,6 +1342,20 @@ void writeCode(Code *code) {
 				printf("\tjal\tmain\n", code->source1->identifier);
 			else
 				printf("\tjal\t_%s\n", code->source1->identifier);
+			
+			Parameter *currParam = code->source1->parameterListHead;
+
+			if (currParam && currParam->type != VOID_TYPE)
+				printf("\n\t# popping pushed parameters\n");
+
+			while (currParam && currParam->type != VOID_TYPE) {
+				if (currParam->type == CHAR_TYPE)
+					printf("\taddu\t$sp, $sp, 1\n");
+				else
+					printf("\taddu\t$sp, $sp, 4\n");
+				
+				currParam = currParam->next;
+			}
 			break;
 		case LEAVE:
 			break;
@@ -1350,23 +1365,22 @@ void writeCode(Code *code) {
 			if (code->source1->location) {
 				printf("\t# pushing parameter %s\n", code->source1->identifier);
 				if (code->source1->type == CHAR_TYPE) {
-					printf("\tsubu\t$sp, $sp, 1\n");
-					_stackSize += 1;
 					printf("\tlb\t$t0, %s\n", code->source1->location);
+					printf("\tsubu\t$sp, $sp, 1\n");
 				} else if (code->source1->type == INT_TYPE) {
-					printf("\tsubu\t$sp, $sp, 4\n");
-					_stackSize += 4;
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-				} else {
 					printf("\tsubu\t$sp, $sp, 4\n");
-					_stackSize += 4;
+				} else {
 					printf("\tla\t$t0, %s\n", code->source1->location);
+					printf("\tsubu\t$sp, $sp, 4\n");
 				}
 			} else {
 				if (code->source1->type == CHAR_TYPE) {
+					printf("\tsubu\t$sp, $sp, 1\n");
 					printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
 					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
 				} else {
+					printf("\tsubu\t$sp, $sp, 4\n");
 					printf("\t# pushing parameter %d\n", code->source1->value.intVal);
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
 				}
