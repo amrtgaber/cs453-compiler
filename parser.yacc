@@ -1516,8 +1516,16 @@ void writeCode(Code *code) {
 			printf("\n");
 			if (code->source1->location) {
 				printf("\t# %s = %s\n", code->destination->identifier, code->source1->identifier);
-				printf("\tlw\t$t0, %s\n", code->source1->location);
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				
+				if (code->source1->type == CHAR_TYPE)
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				else
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				
+				if (code->destination->type == CHAR_TYPE)
+					printf("\tsb\t$t0, %s\n", code->destination->location);
+				else
+					printf("\tsw\t$t0, %s\n", code->destination->location);
 			} else {
 				if (code->source1->type == CHAR_TYPE) {
 					if (code->source1->value.charVal == '\n') {
@@ -1527,14 +1535,17 @@ void writeCode(Code *code) {
 						printf("\t# %s = '\\0'\n", code->destination->identifier);
 						printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
 					} else {
-						printf("\t# %s = %c\n", code->destination->identifier, code->source1->value.charVal);
+						printf("\t# %s = '%c'\n", code->destination->identifier, code->source1->value.charVal);
 						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
 					}
 					printf("\tsb\t$t0, %s\n", code->destination->location);
 				} else if (code->source1->type == INT_TYPE) {
 					printf("\t# %s = %d\n", code->destination->identifier, code->source1->value.intVal);
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
-					printf("\tsw\t$t0, %s\n", code->destination->location);
+					if (code->destination->type == CHAR_TYPE)
+						printf("\tsb\t$t0, %s\n", code->destination->location);
+					else
+						printf("\tsw\t$t0, %s\n", code->destination->location);
 				} else {
 					; // arrays?
 				}
@@ -1543,6 +1554,7 @@ void writeCode(Code *code) {
 		case ENTER:
 			printf("\n");
 			printf("\t# calling %s\n", code->source1->identifier);
+			
 			if (strcmp(code->source1->identifier, "main") == 0)
 				printf("\tjal\tmain\n", code->source1->identifier);
 			else
@@ -1572,7 +1584,7 @@ void writeCode(Code *code) {
 				if (code->source1->type == CHAR_TYPE) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tsb\t$t0, 0($sp)\n");
+					printf("\tsw\t$t0, 0($sp)\n");
 				} else if (code->source1->type == INT_TYPE) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
