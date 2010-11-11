@@ -51,8 +51,8 @@ void takeCharArray(char c[]) {
 }
 
 void make10(int n) {
-	make5(x, char3, int3, charArray2);
-	make5(x, char3, int3, charArray2);
+	make5(3, '\n', int3, charArray2);
+	make5(50, '%', int3, charArray2);
 	print_string("making 10...\n");
 	n = 10;
 	x = 10;
@@ -63,6 +63,9 @@ void make5(int n, char a, int b, char c[]) {
 	int local1, local2;
 	char local3, local4;
 	print_string("making 5...\n");
+	print_string("n = ");
+	print_int(n);
+	print_string("\n");
 	n = 5;
 	x = n;
 }

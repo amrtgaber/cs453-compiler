@@ -139,7 +139,9 @@ char *operatorAsString(Operator operation){
 		case DIV:
 			return "/";
 		case NEG:
-			return "UNARY -";
+			return "NEGATION";
+		case NOT:
+			return "!";
 		case EQUAL:
 			return "==";
 		case NOT_EQUAL:

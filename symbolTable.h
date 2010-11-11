@@ -62,7 +62,7 @@ typedef struct Symbol {
 	char			*identifier;
 	Type 			type;		// also used as the return type for functions
 	Value 			value;
-	char			*location;			// stack offset or global label
+	char			*location;			// register / stack offset / label
 	FunctionType 	functionType;
 	Parameter 		*parameterListHead;
 	struct Symbol 	*next;

@@ -463,18 +463,52 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$fp, $sp, %d\n", _stackSize);
 			  
-			SyntaxTree *parameter = $5;
-			  int i, j;
+			  SyntaxTree *parameter = $5;
+			  SyntaxTree *parameterName = $5;
+			  int i, j, k, l;
+			  i = j = k = l = 0;
 			  for(i = 12, j = 0; parameter; i += 4, j += 4) {
+					
+					l = 0;
+					parameterName = $5;
+				    if (k == 0 && parameterName == parameter) {
+						while (parameterName->left) {
+							parameterName = parameterName->left;
+							k++;
+						}
+						k--;
+					} else {
+						while (l < k) {
+							parameterName = parameterName->left;
+							l++;
+						}
+						k--;
+					}
+				
 					if (parameter->symbol->type == CHAR_TYPE) {
-						printf("\tlb\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameter->symbol->identifier);
+						printf("\tlb\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
 						printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
 					} else {
-						printf("\tlw\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameter->symbol->identifier);
+						printf("\tlw\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameterName->symbol->identifier);
 						printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
 					}
 					
 					parameter = parameter->left;
+			  }
+			  
+			  declarations = $8;
+			  if (i <= _stackSize) {
+			  	  printf("\t# initializing local variables\n");
+			  	  
+				  while(i <= _stackSize) {
+					  if (declarations->symbol->type == CHAR_TYPE)
+				 	  	  printf("\tsb\t$0, %d($sp)\n", _stackSize - i);
+					  else
+						  printf("\tsw\t$0, %d($sp)\n", _stackSize - i);
+					  
+					  declarations = declarations->left;
+					  i += 4;
+				  }
 			  }
 
 			  Code *code = constructCode(function);
@@ -740,6 +774,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '-'");
 			
 			  $$.type = $2.type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, $2.type);
+			  $$.tree = createTree(NEG, newSymbol, $2.tree, NULL);
 			}
 			| '!' expr
 			{
@@ -747,6 +785,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '!'");
 			
 			  $$.type = $2.type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(NOT, newSymbol, $2.tree, NULL);
 			}
 			| expr '+' expr
 			{
@@ -755,6 +797,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '+'");
 			
 			  $$.type = $1.type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  $$.tree = createTree(ADD, newSymbol, $1.tree, $3.tree);
 			}
 			| expr '-' expr
 			{
@@ -763,6 +809,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '-'");
 			
 			  $$.type = $1.type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  $$.tree = createTree(SUB, newSymbol, $1.tree, $3.tree);
 			}
 			| expr '*' expr
 			{
@@ -771,6 +821,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '*'");
 			
 			  $$.type = $1.type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  $$.tree = createTree(MULT, newSymbol, $1.tree, $3.tree);
 			}
 			| expr '/' expr
 			{
@@ -779,6 +833,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '/'");
 			
 			  $$.type = $1.type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  $$.tree = createTree(DIV, newSymbol, $1.tree, $3.tree);
 			}
 			| expr DBLEQ expr
 			{
@@ -787,6 +845,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '=='");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(EQUAL, newSymbol, $1.tree, $3.tree);
 			}
 			| expr NOTEQ expr
 			{
@@ -795,6 +857,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '!='");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(NOT_EQUAL, newSymbol, $1.tree, $3.tree);
 			}
 			| expr LTEQ expr
 			{
@@ -803,6 +869,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '<='");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(LESS_EQUAL, newSymbol, $1.tree, $3.tree);
 			}
 			| expr '<' expr
 			{
@@ -811,6 +881,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '<'");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(LESS_THAN, newSymbol, $1.tree, $3.tree);
 			}
 			| expr GTEQ expr
 			{
@@ -819,6 +893,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '>='");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(GREATER_EQUAL, newSymbol, $1.tree, $3.tree);
 			}
 			| expr '>' expr
 			{
@@ -827,6 +905,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '>'");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(GREATER_THAN, newSymbol, $1.tree, $3.tree);
 			}
 			| expr LOGICAND expr
 			{
@@ -834,6 +916,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '&&'");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(AND, newSymbol, $1.tree, $3.tree);
 			}
 			| expr LOGICOR expr
 			{
@@ -841,6 +927,10 @@ expr:		  '-' expr %prec UMINUS
 				  typeError("incompatible expression for operator '||'");
 			
 			  $$.type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  $$.tree = createTree(OR, newSymbol, $1.tree, $3.tree);
 			}
 			| ID
 			{
@@ -858,7 +948,7 @@ expr:		  '-' expr %prec UMINUS
 				$$.type = $3.type;
 				$$.tree = $3.tree;
 			}
-			| '(' expr ')'	{ $$.type = $2.type; }
+			| '(' expr ')'	{ $$.type = $2.type; $$.tree = $2.tree; }
 			| INTCON
 			{
 			  $$.type = INT_TYPE;
@@ -1216,7 +1306,7 @@ int allocateStackSpace(SyntaxTree *declaration, int offset) {
 	
 	sprintf(declaration->symbol->location, "%d($sp)", offset);
 	
-	printf("Declaration %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
+	//printf("Declaration %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
 	
 	return allocateStackSpace(declaration->left, offset + 4);
 }
@@ -1235,33 +1325,49 @@ Code *constructCode(SyntaxTree *tree) {
 	constructCode(tree->right);
 	
 	switch (tree->operation) {
-		/*case ADD:
+		case ADD:
+			tree->code = createCode(ADD_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 	 	case SUB:
+			tree->code = createCode(SUB_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case MULT:
+			tree->code = createCode(MULT_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case DIV:
+			tree->code = createCode(DIV_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case NEG:
+			tree->code = createCode(NEG_OP, tree->symbol, NULL, tree->symbol);
+			break;
+		case NOT:
+			tree->code = createCode(NOT_OP, tree->symbol, NULL, tree->symbol);
 			break;
 		case EQUAL:
+			tree->code = createCode(EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case NOT_EQUAL:
+			tree->code = createCode(NOT_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case GREATER_THAN:
+			tree->code = createCode(GREATER_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case GREATER_EQUAL:
+			tree->code = createCode(GREATER_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case LESS_THAN:
+			tree->code = createCode(LESS_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case LESS_EQUAL:
+			tree->code = createCode(LESS_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case AND:
+			tree->code = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case OR:
+			tree->code = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
-		case IF_TREE:
+		/*case IF_TREE:
 			break;
 		case WHILE_TREE:
 			break;*/
@@ -1350,7 +1456,10 @@ void writeCode(Code *code) {
 		return;
 	
 	switch (code->opcode) {
-		/*case ADD_OP:
+		case ADD_OP:
+			/*if (code->source1->location) {
+				if (code->source2->location) {
+					printf("\t*/
 			break;
 		case SUB_OP:
 			break;
@@ -1359,6 +1468,8 @@ void writeCode(Code *code) {
 		case DIV_OP:
 			break;
 		case NEG_OP:
+			break;
+		case NOT_OP:
 			break;
 		case EQUAL_OP:
 			break;
@@ -1376,7 +1487,7 @@ void writeCode(Code *code) {
 			break;
 		case OR_OP:
 			break;
-		case BRANCH_EQUAL:
+		/*case BRANCH_EQUAL:
 			break;
 		case BRANCH_NOT_EQUAL:
 			break;
@@ -1473,10 +1584,22 @@ void writeCode(Code *code) {
 				}
 			} else {
 				if (code->source1->type == CHAR_TYPE) {
-					printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
-					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-					printf("\tsb\t$t0, 0($sp)\n");
+					if (code->source1->value.charVal == '\n') {
+						printf("\t# pushing parameter '\\n'\n", code->source1->value.charVal);
+						printf("\tsubu\t$sp, $sp, 4\n");
+						printf("\tli\t$t0, 10\n", code->source1->value.charVal);
+						printf("\tsb\t$t0, 0($sp)\n");
+					} else if (code->source1->value.charVal == '\0') {
+						printf("\t# pushing parameter '\\0'\n", code->source1->value.charVal);
+						printf("\tsubu\t$sp, $sp, 4\n");
+						printf("\tli\t$t0, 0\n", code->source1->value.charVal);
+						printf("\tsb\t$t0, 0($sp)\n");
+					} else {
+						printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
+						printf("\tsubu\t$sp, $sp, 4\n");
+						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						printf("\tsb\t$t0, 0($sp)\n");
+					}
 				} else {
 					printf("\t# pushing parameter %d\n", code->source1->value.intVal);
 					printf("\tsubu\t$sp, $sp, 4\n");

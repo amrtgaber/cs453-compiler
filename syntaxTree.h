@@ -26,6 +26,7 @@ typedef enum Operator {
 	MULT,
 	DIV,
 	NEG,
+	NOT,
 	EQUAL,
 	NOT_EQUAL,
 	GREATER_THAN,

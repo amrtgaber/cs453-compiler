@@ -138,7 +138,7 @@ Symbol *insertGlobal(char *identifier, Type type) {
 	toInsert->type = type;
 	toInsert->value.intVal = 0;
 	toInsert->location = NULL;
-	toInsert->functionType = UNKNOWN;
+	toInsert->functionType = F_UNKNOWN;
 	toInsert->parameterListHead = NULL;
 	
 	toInsert->next = currTable->listHead;
