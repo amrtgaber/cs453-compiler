@@ -32,6 +32,7 @@ void 	typeError(char *errorMessage),
 		insertStringLiteral(Symbol *stringLiteral),
 		popStringLiterals(StringLiteral *stringLiteral);
 int		allocateStackSpace(SyntaxTree *declaration, int offset);
+Symbol	*recallStringLiteral(char *string);
 Code	*constructCode(SyntaxTree *tree);
 
 /************************
@@ -81,6 +82,7 @@ StringLiteral *_stringLiterals = NULL;
 %type 	<string>		ID storeID STRCON
 %type 	<tree>			assignment statement statementOpt paramTypes arrayTypeOpt
 							args varDcl multiVarDcl multiParam multiExprOpt
+							multiTypeDcl
 %type	<exprReturn>	expr multiFuncOpt
 
 %left LOGICOR
@@ -160,7 +162,7 @@ multiProtDcl: multiProtDcl ',' makeProt storeFID '(' insertFunc paramTypes ')'
 			| /* empty */
 			;
 
-multiVarDcl:  multiVarDcl ',' varDcl { $$ = createTree(DECLARATION, NULL, $3, $1); }
+multiVarDcl:  multiVarDcl ',' varDcl { $3->left = $1; $$ = $3; }
 			| /* empty */ { $$ = NULL; }
 			;
 
@@ -423,8 +425,19 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  statementOpt '}' 
 			{ 
 			  Symbol *currFunction = recallGlobal(_currFID);
-			  SyntaxTree *function = createTree(FUNCTION_ROOT, currFunction, $5, $9);
-			  SyntaxTree *declarations = $5;
+							
+			  SyntaxTree *declarations = $8;
+			
+			  if (declarations) {
+				  while (declarations->left)
+					  declarations = declarations->left;
+					
+				  declarations->left = $5;
+			  } else {
+				  $8 = $5;
+			  }
+			
+			  SyntaxTree *function = createTree(FUNCTION_ROOT, currFunction, $8, $9);
 			
 			  printf("\n.text\n\n");
 			
@@ -443,24 +456,25 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 				  printf("_%s:\n", _currFID);
 			
 			  _stackSize = 8;
-			  _stackSize += allocateStackSpace(declarations, 0);
+			  _stackSize += allocateStackSpace($8, 0);
 
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$fp, $sp, %d\n", _stackSize);
 			  
-			Parameter *currParam = currFunction->parameterListHead;
+			SyntaxTree *parameter = $5;
 			  int i, j;
-			  for(i = 12, j = 0; i <= _stackSize; i += 4, j += 4) {
-				if (currParam->type == CHAR_TYPE) {
-					printf("\tlb\t$t0, %d($fp)\t\t# storing parameter %d\n", j, (j + 4) / 4);
-					printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
-				} else {
-					printf("\tlw\t$t0, %d($fp)\t\t# storing parameter %d\n", j, (j + 4) / 4);
-					printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
-			    }
-				currParam = currParam->next;
+			  for(i = 12, j = 0; parameter; i += 4, j += 4) {
+					if (parameter->symbol->type == CHAR_TYPE) {
+						printf("\tlb\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameter->symbol->identifier);
+						printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
+					} else {
+						printf("\tlw\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameter->symbol->identifier);
+						printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
+					}
+					
+					parameter = parameter->left;
 			  }
 
 			  Code *code = constructCode(function);
@@ -473,7 +487,6 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  #endif
 			
 			  printf("\n_%sReturn:\n", _currFID);
-			  // params automatically popped
 			  printf("\tlw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
@@ -484,11 +497,27 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			;
 
 multiTypeDcl: multiTypeDcl type varDcl multiVarDcl ';'
+			{
+				SyntaxTree *tree = $4;
+				
+				if (tree) {
+					
+					while (tree->left)
+						tree = tree->left;
+					
+					tree->left = $3;
+					$3->left = $1;
+					$$ = $4;
+				} else {
+					$3->left = $1;
+					$$ = $3;
+				}
+			}
 
 			/* error productions */
-			| multiTypeDcl type error ';' { yyerrok; }
+			| multiTypeDcl type error ';' { yyerrok; $$ = NULL; }
 
-			| /* empty */
+			| /* empty */ { $$ = NULL; }
 			;
 
 statement:	  IF '(' expr ')' statement
@@ -851,18 +880,24 @@ expr:		  '-' expr %prec UMINUS
 			| STRCON
 			{
 			  $$.type = CHAR_ARRAY;
-			  generateNewTempID();
-			  Symbol *newSymbol = insertGlobal(_tempID, CHAR_ARRAY);
-			  newSymbol->value.strVal = $1;
-			  newSymbol->functionType = NON_FUNCTION;
 			  
-			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
-				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  Symbol *currSymbol = recallStringLiteral($1);
+			  
+			  if (!currSymbol) {
+			      generateNewTempID();
+				  currSymbol = insertGlobal(_tempID, CHAR_ARRAY);
+				  currSymbol->value.strVal = $1;
+				  currSymbol->functionType = NON_FUNCTION;
 
-			 
-			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
-			  insertStringLiteral(newSymbol);
-			  $$.tree = createTree(SYMBOL, newSymbol, NULL, NULL);
+				  if (!(currSymbol->location = malloc(strlen(currSymbol->identifier) + 2)))
+					  ERROR(NULL, __LINE__, TRUE);				//out of memory
+
+
+				  sprintf(currSymbol->location, "_%s", currSymbol->identifier);
+				  insertStringLiteral(currSymbol);
+			  }
+			  
+			  $$.tree = createTree(SYMBOL, currSymbol, NULL, NULL);
 			}
 			;
 			
@@ -1062,9 +1097,34 @@ void insertStringLiteral(Symbol *stringLiteral) {
 	_stringLiterals = newStringLiteral;
 }
 
-/* Function: insertStringLiteral
+/* Function: recallStringLiteral
+ * Parameters: char *targetString
+ * Description: Searches string literals list for target string. If found
+ *					returns a reference to its symbol table entry.
+ * Returns: A reference to the symbol table entry storing the specified string
+ *				if found, NULL otherwise.
+ * Preconditions: none
+ */
+Symbol	*recallStringLiteral(char *targetString) {
+	if (!targetString)
+		return NULL;
+	
+	StringLiteral *currString = _stringLiterals;
+	
+	while (currString) {
+		if (strcmp(currString->symbol->value.strVal, targetString) == 0)
+			return currString->symbol;
+		
+		currString = currString->next;
+	}
+	
+	return NULL;
+}
+
+/* Function: popStringLiterals
  * Parameters: Symbol *stringLiteral
- * Description: Adds the given string literal to the list of string literals.
+ * Description: Writes all global strings into mips global data and frees string
+ *					literals list.
  * Returns: none
  * Preconditions: none
  */
@@ -1156,7 +1216,7 @@ int allocateStackSpace(SyntaxTree *declaration, int offset) {
 	
 	sprintf(declaration->symbol->location, "%d($sp)", offset);
 	
-	//printf("Parameter %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
+	printf("Declaration %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
 	
 	return allocateStackSpace(declaration->left, offset + 4);
 }
@@ -1257,11 +1317,11 @@ Code *constructCode(SyntaxTree *tree) {
 		case SYMBOL:
 			break;
 		case FUNCTION_ROOT:
-			if (tree->left) {
+			if (tree->left && tree->left->code) {
 				tree->code = tree->left->code;
-
+					
 				Code *tail = tree->code;
-
+					
 				while (tail->next)
 					tail = tail->next;
 
@@ -1351,7 +1411,7 @@ void writeCode(Code *code) {
 				if (code->source1->type == CHAR_TYPE) {
 					if (code->source1->value.charVal == '\n') {
 						printf("\t# %s = '\\n'\n", code->destination->identifier);
-						printf("\tli\t$t0, 12		# 12 is ascii value for '\\n'\n");
+						printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
 					} else if (code->source1->value.charVal == '\0') {
 						printf("\t# %s = '\\0'\n", code->destination->identifier);
 						printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
