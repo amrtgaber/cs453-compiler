@@ -52,7 +52,7 @@ main:
 	sb	$t0, _char1
 
 	# char2 = '\n'
-	li	$t0, 12		# 12 is ascii value for '\n'
+	li	$t0, 10		# 10 is ascii value for '\n'
 	sb	$t0, _char2
 
 	# char3 = '\0'
@@ -181,6 +181,35 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
+	# calling onlyLocals
+	jal	_onlyLocals
+
+	# pushing parameter charArray1
+	la	$t0, _charArray1
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter intArray1
+	la	$t0, _intArray1
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter char1
+	lb	$t0, _char1
+	subu	$sp, $sp, 4
+	sb	$t0, 0($sp)
+
+	# pushing parameter int1
+	lw	$t0, _int1
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling onlyParameters
+	jal	_onlyParameters
+
+	# popping pushed parameters
+	addu	$sp, $sp, 16
+
 _mainReturn:
 	lw	$ra, 4($sp)
 	lw	$fp, 0($sp)
@@ -189,12 +218,57 @@ _mainReturn:
 
 .text
 
+_onlyLocals:
+Declaration local4 has location 0($sp)
+Declaration local3 has location 4($sp)
+Declaration local2 has location 8($sp)
+Declaration local1 has location 12($sp)
+	subu	$sp, $sp, 24
+	sw	$ra, 20($sp)
+	sw	$fp, 16($sp)
+	addu	$fp, $sp, 24
+
+_onlyLocalsReturn:
+	lw	$ra, 20($sp)
+	lw	$fp, 16($sp)
+	addu	$sp, $sp, 24
+	jr	$ra
+
+.text
+
+_onlyParameters:
+Declaration param4 has location 0($sp)
+Declaration param3 has location 4($sp)
+Declaration param2 has location 8($sp)
+Declaration param1 has location 12($sp)
+	subu	$sp, $sp, 24
+	sw	$ra, 20($sp)
+	sw	$fp, 16($sp)
+	addu	$fp, $sp, 24
+	lw	$t0, 0($fp)		# storing local variable param4
+	sw	$t0, 12($sp)
+	lw	$t0, 4($fp)		# storing local variable param3
+	sw	$t0, 8($sp)
+	lb	$t0, 8($fp)		# storing local variable param2
+	sb	$t0, 4($sp)
+	lw	$t0, 12($fp)		# storing local variable param1
+	sw	$t0, 0($sp)
+
+_onlyParametersReturn:
+	lw	$ra, 20($sp)
+	lw	$fp, 16($sp)
+	addu	$sp, $sp, 24
+	jr	$ra
+
+.text
+
 _takeIntArray:
+Declaration n has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-	lw	$t0, 0($fp)		# storing parameter 1
+	lw	$t0, 0($fp)		# storing local variable n
 	sw	$t0, 0($sp)
 
 	# return
@@ -209,11 +283,12 @@ _takeIntArrayReturn:
 .text
 
 _takeCharArray:
+Declaration c has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-	lw	$t0, 0($fp)		# storing parameter 1
+	lw	$t0, 0($fp)		# storing local variable c
 	sw	$t0, 0($sp)
 
 _takeCharArrayReturn:
@@ -225,11 +300,12 @@ _takeCharArrayReturn:
 .text
 
 _make10:
+Declaration n has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-	lw	$t0, 0($fp)		# storing parameter 1
+	lw	$t0, 0($fp)		# storing local variable n
 	sw	$t0, 0($sp)
 
 	# pushing parameter charArray2
@@ -315,18 +391,26 @@ _make10Return:
 .text
 
 _make5:
-	subu	$sp, $sp, 24
-	sw	$ra, 20($sp)
-	sw	$fp, 16($sp)
-	addu	$fp, $sp, 24
-	lw	$t0, 0($fp)		# storing parameter 1
-	sw	$t0, 12($sp)
-	lb	$t0, 4($fp)		# storing parameter 2
-	sb	$t0, 8($sp)
-	lw	$t0, 8($fp)		# storing parameter 3
-	sw	$t0, 4($sp)
-	lw	$t0, 12($fp)		# storing parameter 4
-	sw	$t0, 0($sp)
+Declaration local4 has location 0($sp)
+Declaration local3 has location 4($sp)
+Declaration local2 has location 8($sp)
+Declaration local1 has location 12($sp)
+Declaration c has location 16($sp)
+Declaration b has location 20($sp)
+Declaration a has location 24($sp)
+Declaration n has location 28($sp)
+	subu	$sp, $sp, 40
+	sw	$ra, 36($sp)
+	sw	$fp, 32($sp)
+	addu	$fp, $sp, 40
+	lw	$t0, 0($fp)		# storing local variable c
+	sw	$t0, 28($sp)
+	lw	$t0, 4($fp)		# storing local variable b
+	sw	$t0, 24($sp)
+	lb	$t0, 8($fp)		# storing local variable a
+	sb	$t0, 20($sp)
+	lw	$t0, 12($fp)		# storing local variable n
+	sw	$t0, 16($sp)
 
 	# pushing parameter _temp10
 	la	$t0, __temp10
@@ -341,26 +425,27 @@ _make5:
 
 	# n = 5
 	li	$t0, 5
-	sw	$t0, 12($sp)
+	sw	$t0, 28($sp)
 
 	# x = n
-	lw	$t0, 12($sp)
+	lw	$t0, 28($sp)
 	sw	$t0, _x
 
 _make5Return:
-	lw	$ra, 20($sp)
-	lw	$fp, 16($sp)
-	addu	$sp, $sp, 24
+	lw	$ra, 36($sp)
+	lw	$fp, 32($sp)
+	addu	$sp, $sp, 40
 	jr	$ra
 
 .text
 
 _printX:
+Declaration x has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-	lw	$t0, 0($fp)		# storing parameter 1
+	lw	$t0, 0($fp)		# storing local variable x
 	sw	$t0, 0($sp)
 
 	# pushing parameter _temp12
@@ -385,8 +470,8 @@ _printX:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# pushing parameter _temp13
-	la	$t0, __temp13
+	# pushing parameter _temp6
+	la	$t0, __temp6
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -405,15 +490,16 @@ _printXReturn:
 .text
 
 _printA:
+Declaration a has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
 	addu	$fp, $sp, 12
-	lw	$t0, 0($fp)		# storing parameter 1
+	lw	$t0, 0($fp)		# storing local variable a
 	sw	$t0, 0($sp)
 
-	# pushing parameter _temp14
-	la	$t0, __temp14
+	# pushing parameter _temp13
+	la	$t0, __temp13
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -434,8 +520,8 @@ _printA:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# pushing parameter _temp15
-	la	$t0, __temp15
+	# pushing parameter _temp6
+	la	$t0, __temp6
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -453,14 +539,8 @@ _printAReturn:
 
 .data
 
-__temp15:
-	.asciiz	"\n"
-
-__temp14:
-	.asciiz	"a = "
-
 __temp13:
-	.asciiz	"\n"
+	.asciiz	"a = "
 
 __temp12:
 	.asciiz	"x = "

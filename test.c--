@@ -2,7 +2,8 @@ extern void print_int(int n);
 extern void print_string(char s[]);
 
 void printX(int x), printA(int a), make10(int n), make5(int n, char a, int b, char c[]),
-		takeIntArray(int n[]), takeCharArray(char c[]);
+		takeIntArray(int n[]), takeCharArray(char c[]), onlyLocals(void),
+		onlyParameters(int param1, char param2, int param3[], char param4[]);
 
 int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[100];
 char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
@@ -27,6 +28,18 @@ void main(void) {
 	
 	takeIntArray(intArray3);
 	takeCharArray(charArray2);
+	onlyLocals();
+	onlyParameters(int1, char1, intArray1, charArray1);
+	
+}
+
+void onlyLocals(void) {
+	int local1, local2;
+	char local3, local4;
+}
+
+void onlyParameters(int param1, char param2, int param3[], char param4[]) {
+	
 }
 
 void takeIntArray(int n[]) {
@@ -47,6 +60,8 @@ void make10(int n) {
 }
 
 void make5(int n, char a, int b, char c[]) {
+	int local1, local2;
+	char local3, local4;
 	print_string("making 5...\n");
 	n = 5;
 	x = n;
