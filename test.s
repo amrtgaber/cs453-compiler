@@ -219,14 +219,15 @@ _mainReturn:
 .text
 
 _onlyLocals:
-Declaration local4 has location 0($sp)
-Declaration local3 has location 4($sp)
-Declaration local2 has location 8($sp)
-Declaration local1 has location 12($sp)
 	subu	$sp, $sp, 24
 	sw	$ra, 20($sp)
 	sw	$fp, 16($sp)
 	addu	$fp, $sp, 24
+	# initializing local variables
+	sb	$0, 12($sp)
+	sb	$0, 8($sp)
+	sw	$0, 4($sp)
+	sw	$0, 0($sp)
 
 _onlyLocalsReturn:
 	lw	$ra, 20($sp)
@@ -237,21 +238,17 @@ _onlyLocalsReturn:
 .text
 
 _onlyParameters:
-Declaration param4 has location 0($sp)
-Declaration param3 has location 4($sp)
-Declaration param2 has location 8($sp)
-Declaration param1 has location 12($sp)
 	subu	$sp, $sp, 24
 	sw	$ra, 20($sp)
 	sw	$fp, 16($sp)
 	addu	$fp, $sp, 24
-	lw	$t0, 0($fp)		# storing local variable param4
+	lw	$t0, 0($fp)		# storing local variable param1
 	sw	$t0, 12($sp)
-	lw	$t0, 4($fp)		# storing local variable param3
+	lw	$t0, 4($fp)		# storing local variable param2
 	sw	$t0, 8($sp)
-	lb	$t0, 8($fp)		# storing local variable param2
+	lb	$t0, 8($fp)		# storing parameter param3
 	sb	$t0, 4($sp)
-	lw	$t0, 12($fp)		# storing local variable param1
+	lw	$t0, 12($fp)		# storing local variable param4
 	sw	$t0, 0($sp)
 
 _onlyParametersReturn:
@@ -263,7 +260,6 @@ _onlyParametersReturn:
 .text
 
 _takeIntArray:
-Declaration n has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
@@ -283,7 +279,6 @@ _takeIntArrayReturn:
 .text
 
 _takeCharArray:
-Declaration c has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
@@ -300,7 +295,6 @@ _takeCharArrayReturn:
 .text
 
 _make10:
-Declaration n has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
@@ -318,14 +312,14 @@ Declaration n has location 0($sp)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
-	# pushing parameter char3
-	lb	$t0, _char3
+	# pushing parameter '\n'
 	subu	$sp, $sp, 4
+	li	$t0, 10
 	sb	$t0, 0($sp)
 
-	# pushing parameter x
-	lw	$t0, _x
+	# pushing parameter 3
 	subu	$sp, $sp, 4
+	li	$t0, 3
 	sw	$t0, 0($sp)
 
 	# calling make5
@@ -344,14 +338,14 @@ Declaration n has location 0($sp)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
-	# pushing parameter char3
-	lb	$t0, _char3
+	# pushing parameter '%'
 	subu	$sp, $sp, 4
+	li	$t0, '%'
 	sb	$t0, 0($sp)
 
-	# pushing parameter x
-	lw	$t0, _x
+	# pushing parameter 50
 	subu	$sp, $sp, 4
+	li	$t0, 50
 	sw	$t0, 0($sp)
 
 	# calling make5
@@ -360,8 +354,8 @@ Declaration n has location 0($sp)
 	# popping pushed parameters
 	addu	$sp, $sp, 16
 
-	# pushing parameter _temp7
-	la	$t0, __temp7
+	# pushing parameter _temp11
+	la	$t0, __temp11
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -391,29 +385,59 @@ _make10Return:
 .text
 
 _make5:
-Declaration local4 has location 0($sp)
-Declaration local3 has location 4($sp)
-Declaration local2 has location 8($sp)
-Declaration local1 has location 12($sp)
-Declaration c has location 16($sp)
-Declaration b has location 20($sp)
-Declaration a has location 24($sp)
-Declaration n has location 28($sp)
 	subu	$sp, $sp, 40
 	sw	$ra, 36($sp)
 	sw	$fp, 32($sp)
 	addu	$fp, $sp, 40
-	lw	$t0, 0($fp)		# storing local variable c
+	lw	$t0, 0($fp)		# storing local variable n
 	sw	$t0, 28($sp)
-	lw	$t0, 4($fp)		# storing local variable b
+	lw	$t0, 4($fp)		# storing local variable a
 	sw	$t0, 24($sp)
-	lb	$t0, 8($fp)		# storing local variable a
+	lb	$t0, 8($fp)		# storing parameter b
 	sb	$t0, 20($sp)
-	lw	$t0, 12($fp)		# storing local variable n
+	lw	$t0, 12($fp)		# storing local variable c
 	sw	$t0, 16($sp)
+	# initializing local variables
+	sb	$0, 12($sp)
+	sb	$0, 8($sp)
+	sw	$0, 4($sp)
+	sw	$0, 0($sp)
 
-	# pushing parameter _temp10
-	la	$t0, __temp10
+	# pushing parameter _temp14
+	la	$t0, __temp14
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling print_string
+	jal	_print_string
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	# pushing parameter _temp15
+	la	$t0, __temp15
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling print_string
+	jal	_print_string
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	# pushing parameter n
+	lw	$t0, 28($sp)
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling print_int
+	jal	_print_int
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	# pushing parameter _temp6
+	la	$t0, __temp6
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -440,7 +464,6 @@ _make5Return:
 .text
 
 _printX:
-Declaration x has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
@@ -448,8 +471,8 @@ Declaration x has location 0($sp)
 	lw	$t0, 0($fp)		# storing local variable x
 	sw	$t0, 0($sp)
 
-	# pushing parameter _temp12
-	la	$t0, __temp12
+	# pushing parameter _temp17
+	la	$t0, __temp17
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -490,7 +513,6 @@ _printXReturn:
 .text
 
 _printA:
-Declaration a has location 0($sp)
 	subu	$sp, $sp, 12
 	sw	$ra, 8($sp)
 	sw	$fp, 4($sp)
@@ -498,8 +520,8 @@ Declaration a has location 0($sp)
 	lw	$t0, 0($fp)		# storing local variable a
 	sw	$t0, 0($sp)
 
-	# pushing parameter _temp13
-	la	$t0, __temp13
+	# pushing parameter _temp18
+	la	$t0, __temp18
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -539,16 +561,19 @@ _printAReturn:
 
 .data
 
-__temp13:
+__temp18:
 	.asciiz	"a = "
 
-__temp12:
+__temp17:
 	.asciiz	"x = "
 
-__temp10:
+__temp15:
+	.asciiz	"n = "
+
+__temp14:
 	.asciiz	"making 5...\n"
 
-__temp7:
+__temp11:
 	.asciiz	"making 10...\n"
 
 __temp6:

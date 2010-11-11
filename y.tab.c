@@ -544,12 +544,12 @@ static const yytype_uint16 yyrline[] =
        0,    98,    98,    99,   102,   103,   105,   108,   114,   116,
      117,   119,   122,   127,   133,   138,   143,   161,   162,   165,
      166,   169,   184,   212,   216,   222,   230,   245,   267,   271,
-     277,   310,   351,   352,   355,   385,   424,   499,   518,   520,
-     523,   528,   533,   538,   543,   564,   580,   581,   612,   611,
-     656,   657,   660,   663,   669,   672,   673,   676,   704,   733,
-     734,   737,   744,   751,   759,   767,   775,   783,   791,   799,
-     807,   815,   823,   831,   838,   846,   845,   861,   862,   871,
-     880,   904,   926,   925,   956,   955,   991,  1008,  1039,  1040
+     277,   310,   351,   352,   355,   385,   424,   533,   552,   554,
+     557,   562,   567,   572,   577,   598,   614,   615,   646,   645,
+     690,   691,   694,   697,   703,   706,   707,   710,   738,   767,
+     768,   771,   782,   793,   805,   817,   829,   841,   853,   865,
+     877,   889,   901,   913,   924,   936,   935,   951,   952,   961,
+     970,   994,  1016,  1015,  1046,  1045,  1081,  1098,  1129,  1130
 };
 #endif
 
@@ -2029,18 +2029,52 @@ yyreduce:
 			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$fp, $sp, %d\n", _stackSize);
 			  
-			SyntaxTree *parameter = (yyvsp[(5) - (10)].tree);
-			  int i, j;
+			  SyntaxTree *parameter = (yyvsp[(5) - (10)].tree);
+			  SyntaxTree *parameterName = (yyvsp[(5) - (10)].tree);
+			  int i, j, k, l;
+			  i = j = k = l = 0;
 			  for(i = 12, j = 0; parameter; i += 4, j += 4) {
+					
+					l = 0;
+					parameterName = (yyvsp[(5) - (10)].tree);
+				    if (k == 0 && parameterName == parameter) {
+						while (parameterName->left) {
+							parameterName = parameterName->left;
+							k++;
+						}
+						k--;
+					} else {
+						while (l < k) {
+							parameterName = parameterName->left;
+							l++;
+						}
+						k--;
+					}
+				
 					if (parameter->symbol->type == CHAR_TYPE) {
-						printf("\tlb\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameter->symbol->identifier);
+						printf("\tlb\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
 						printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
 					} else {
-						printf("\tlw\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameter->symbol->identifier);
+						printf("\tlw\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameterName->symbol->identifier);
 						printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
 					}
 					
 					parameter = parameter->left;
+			  }
+			  
+			  declarations = (yyvsp[(8) - (10)].tree);
+			  if (i <= _stackSize) {
+			  	  printf("\t# initializing local variables\n");
+			  	  
+				  while(i <= _stackSize) {
+					  if (declarations->symbol->type == CHAR_TYPE)
+				 	  	  printf("\tsb\t$0, %d($sp)\n", _stackSize - i);
+					  else
+						  printf("\tsw\t$0, %d($sp)\n", _stackSize - i);
+					  
+					  declarations = declarations->left;
+					  i += 4;
+				  }
 			  }
 
 			  Code *code = constructCode(function);
@@ -2063,7 +2097,7 @@ yyreduce:
     break;
 
   case 37:
-#line 500 "parser.yacc"
+#line 534 "parser.yacc"
     {
 				SyntaxTree *tree = (yyvsp[(4) - (5)].tree);
 				
@@ -2083,17 +2117,17 @@ yyreduce:
     break;
 
   case 38:
-#line 518 "parser.yacc"
+#line 552 "parser.yacc"
     { yyerrok; (yyval.tree) = NULL; }
     break;
 
   case 39:
-#line 520 "parser.yacc"
+#line 554 "parser.yacc"
     { (yyval.tree) = NULL; }
     break;
 
   case 40:
-#line 524 "parser.yacc"
+#line 558 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (5)].exprReturn).type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
@@ -2101,7 +2135,7 @@ yyreduce:
     break;
 
   case 41:
-#line 529 "parser.yacc"
+#line 563 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (7)].exprReturn).type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
@@ -2109,7 +2143,7 @@ yyreduce:
     break;
 
   case 42:
-#line 534 "parser.yacc"
+#line 568 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (5)].exprReturn).type != BOOLEAN)
 				  typeError("conditional in while loop must be a boolean");
@@ -2117,7 +2151,7 @@ yyreduce:
     break;
 
   case 43:
-#line 539 "parser.yacc"
+#line 573 "parser.yacc"
     {
 			  if ((yyvsp[(5) - (9)].integer) != BOOLEAN)
 				  typeError("conditional in for loop must be a boolean");
@@ -2125,7 +2159,7 @@ yyreduce:
     break;
 
   case 44:
-#line 544 "parser.yacc"
+#line 578 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currFID);
 			
@@ -2149,7 +2183,7 @@ yyreduce:
     break;
 
   case 45:
-#line 565 "parser.yacc"
+#line 599 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currFID);
 			
@@ -2168,12 +2202,12 @@ yyreduce:
     break;
 
   case 46:
-#line 580 "parser.yacc"
+#line 614 "parser.yacc"
     { (yyval.tree) = (yyvsp[(1) - (2)].tree); }
     break;
 
   case 47:
-#line 582 "parser.yacc"
+#line 616 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 			  
@@ -2206,7 +2240,7 @@ yyreduce:
     break;
 
   case 48:
-#line 612 "parser.yacc"
+#line 646 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 
@@ -2230,7 +2264,7 @@ yyreduce:
     break;
 
   case 49:
-#line 633 "parser.yacc"
+#line 667 "parser.yacc"
     {
 			  if (_callStack) {
 			  	  if (_callStack->currParam) {
@@ -2257,22 +2291,22 @@ yyreduce:
     break;
 
   case 50:
-#line 656 "parser.yacc"
+#line 690 "parser.yacc"
     { (yyval.tree) = (yyvsp[(2) - (3)].tree); }
     break;
 
   case 51:
-#line 657 "parser.yacc"
+#line 691 "parser.yacc"
     { (yyval.tree) = NULL; }
     break;
 
   case 52:
-#line 660 "parser.yacc"
+#line 694 "parser.yacc"
     { yyerrok; }
     break;
 
   case 53:
-#line 664 "parser.yacc"
+#line 698 "parser.yacc"
     {
 			  if ((yyvsp[(2) - (2)].tree)) {
 			  	  (yyval.tree) = createTree(STATEMENT, NULL, (yyvsp[(2) - (2)].tree), (yyvsp[(1) - (2)].tree));
@@ -2281,22 +2315,22 @@ yyreduce:
     break;
 
   case 54:
-#line 669 "parser.yacc"
+#line 703 "parser.yacc"
     { (yyval.tree) = NULL; }
     break;
 
   case 55:
-#line 672 "parser.yacc"
+#line 706 "parser.yacc"
     { (yyval.integer) = (yyvsp[(1) - (1)].exprReturn).type; }
     break;
 
   case 56:
-#line 673 "parser.yacc"
+#line 707 "parser.yacc"
     { (yyval.integer) = BOOLEAN; }
     break;
 
   case 57:
-#line 677 "parser.yacc"
+#line 711 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (3)].string);
 			  Symbol *currSymbol = recall(_currID);
@@ -2327,7 +2361,7 @@ yyreduce:
     break;
 
   case 58:
-#line 705 "parser.yacc"
+#line 739 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (6)].string);
 			  Symbol *currSymbol = recall(_currID);
@@ -2357,157 +2391,213 @@ yyreduce:
     break;
 
   case 61:
-#line 738 "parser.yacc"
+#line 772 "parser.yacc"
     {
 			  if ((yyvsp[(2) - (2)].exprReturn).type != INT_TYPE && (yyvsp[(2) - (2)].exprReturn).type != CHAR_TYPE)
 				  typeError("incompatible expression for operator '-'");
 			
 			  (yyval.exprReturn).type = (yyvsp[(2) - (2)].exprReturn).type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, (yyvsp[(2) - (2)].exprReturn).type);
+			  (yyval.exprReturn).tree = createTree(NEG, newSymbol, (yyvsp[(2) - (2)].exprReturn).tree, NULL);
 			}
     break;
 
   case 62:
-#line 745 "parser.yacc"
+#line 783 "parser.yacc"
     {
 			  if ((yyvsp[(2) - (2)].exprReturn).type != BOOLEAN)
 				  typeError("incompatible expression for operator '!'");
 			
 			  (yyval.exprReturn).type = (yyvsp[(2) - (2)].exprReturn).type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(NOT, newSymbol, (yyvsp[(2) - (2)].exprReturn).tree, NULL);
 			}
     break;
 
   case 63:
-#line 752 "parser.yacc"
+#line 794 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE)
 				  || ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '+'");
 			
 			  (yyval.exprReturn).type = (yyvsp[(1) - (3)].exprReturn).type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, (yyvsp[(1) - (3)].exprReturn).type);
+			  (yyval.exprReturn).tree = createTree(ADD, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 64:
-#line 760 "parser.yacc"
+#line 806 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE)
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '-'");
 			
 			  (yyval.exprReturn).type = (yyvsp[(1) - (3)].exprReturn).type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, (yyvsp[(1) - (3)].exprReturn).type);
+			  (yyval.exprReturn).tree = createTree(SUB, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 65:
-#line 768 "parser.yacc"
+#line 818 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '*'");
 			
 			  (yyval.exprReturn).type = (yyvsp[(1) - (3)].exprReturn).type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, (yyvsp[(1) - (3)].exprReturn).type);
+			  (yyval.exprReturn).tree = createTree(MULT, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 66:
-#line 776 "parser.yacc"
+#line 830 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '/'");
 			
 			  (yyval.exprReturn).type = (yyvsp[(1) - (3)].exprReturn).type;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, (yyvsp[(1) - (3)].exprReturn).type);
+			  (yyval.exprReturn).tree = createTree(DIV, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 67:
-#line 784 "parser.yacc"
+#line 842 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '=='");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(EQUAL, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 68:
-#line 792 "parser.yacc"
+#line 854 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '!='");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(NOT_EQUAL, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 69:
-#line 800 "parser.yacc"
+#line 866 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '<='");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(LESS_EQUAL, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 70:
-#line 808 "parser.yacc"
+#line 878 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '<'");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(LESS_THAN, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 71:
-#line 816 "parser.yacc"
+#line 890 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '>='");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(GREATER_EQUAL, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 72:
-#line 824 "parser.yacc"
+#line 902 "parser.yacc"
     {
 			  if (((yyvsp[(1) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(1) - (3)].exprReturn).type != CHAR_TYPE) 
 					|| ((yyvsp[(3) - (3)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (3)].exprReturn).type != CHAR_TYPE))
 				  typeError("incompatible expression for operator '>'");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(GREATER_THAN, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 73:
-#line 832 "parser.yacc"
+#line 914 "parser.yacc"
     {
 			  if ((yyvsp[(1) - (3)].exprReturn).type != BOOLEAN || (yyvsp[(3) - (3)].exprReturn).type != BOOLEAN)
 				  typeError("incompatible expression for operator '&&'");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(AND, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 74:
-#line 839 "parser.yacc"
+#line 925 "parser.yacc"
     {
 			  if ((yyvsp[(1) - (3)].exprReturn).type != BOOLEAN || (yyvsp[(3) - (3)].exprReturn).type != BOOLEAN)
 				  typeError("incompatible expression for operator '||'");
 			
 			  (yyval.exprReturn).type = BOOLEAN;
+			
+			  generateNewTempID();
+			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  (yyval.exprReturn).tree = createTree(OR, newSymbol, (yyvsp[(1) - (3)].exprReturn).tree, (yyvsp[(3) - (3)].exprReturn).tree);
 			}
     break;
 
   case 75:
-#line 846 "parser.yacc"
+#line 936 "parser.yacc"
     {
 			  _currID = (yyvsp[(1) - (1)].string);
 			  Symbol *currSymbol = recall(_currID);
@@ -2521,7 +2611,7 @@ yyreduce:
     break;
 
   case 76:
-#line 857 "parser.yacc"
+#line 947 "parser.yacc"
     {
 				(yyval.exprReturn).type = (yyvsp[(3) - (3)].exprReturn).type;
 				(yyval.exprReturn).tree = (yyvsp[(3) - (3)].exprReturn).tree;
@@ -2529,12 +2619,12 @@ yyreduce:
     break;
 
   case 77:
-#line 861 "parser.yacc"
-    { (yyval.exprReturn).type = (yyvsp[(2) - (3)].exprReturn).type; }
+#line 951 "parser.yacc"
+    { (yyval.exprReturn).type = (yyvsp[(2) - (3)].exprReturn).type; (yyval.exprReturn).tree = (yyvsp[(2) - (3)].exprReturn).tree; }
     break;
 
   case 78:
-#line 863 "parser.yacc"
+#line 953 "parser.yacc"
     {
 			  (yyval.exprReturn).type = INT_TYPE;
 			  generateNewTempID();
@@ -2546,7 +2636,7 @@ yyreduce:
     break;
 
   case 79:
-#line 872 "parser.yacc"
+#line 962 "parser.yacc"
     {
 			  (yyval.exprReturn).type = CHAR_TYPE;
 			  generateNewTempID();
@@ -2558,7 +2648,7 @@ yyreduce:
     break;
 
   case 80:
-#line 881 "parser.yacc"
+#line 971 "parser.yacc"
     {
 			  (yyval.exprReturn).type = CHAR_ARRAY;
 			  
@@ -2583,7 +2673,7 @@ yyreduce:
     break;
 
   case 81:
-#line 905 "parser.yacc"
+#line 995 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 			  
@@ -2607,7 +2697,7 @@ yyreduce:
     break;
 
   case 82:
-#line 926 "parser.yacc"
+#line 1016 "parser.yacc"
     {
 			  Symbol *currSymbol = recallGlobal(_currID);
 
@@ -2625,7 +2715,7 @@ yyreduce:
     break;
 
   case 83:
-#line 941 "parser.yacc"
+#line 1031 "parser.yacc"
     { 
 			  if (_callStack) {
 			  	  if (_callStack->currParam) {
@@ -2643,7 +2733,7 @@ yyreduce:
     break;
 
   case 84:
-#line 956 "parser.yacc"
+#line 1046 "parser.yacc"
     {
 			  Symbol *currSymbol = recall(_currID);
 
@@ -2660,7 +2750,7 @@ yyreduce:
     break;
 
   case 85:
-#line 970 "parser.yacc"
+#line 1060 "parser.yacc"
     {
 			  if ((yyvsp[(3) - (4)].exprReturn).type != INT_TYPE && (yyvsp[(3) - (4)].exprReturn).type != CHAR_TYPE) {
 				  sprintf(_errorMessage, "ARRAY index for %s must be INT or CHAR",
@@ -2684,7 +2774,7 @@ yyreduce:
     break;
 
   case 86:
-#line 991 "parser.yacc"
+#line 1081 "parser.yacc"
     {
 			  Symbol *currSymbol = recall(_currID);
 				
@@ -2703,7 +2793,7 @@ yyreduce:
     break;
 
   case 87:
-#line 1009 "parser.yacc"
+#line 1099 "parser.yacc"
     {
 			  if (_callStack) {
 		  	  	  if (!_callStack->currParam) {
@@ -2735,18 +2825,18 @@ yyreduce:
     break;
 
   case 88:
-#line 1039 "parser.yacc"
+#line 1129 "parser.yacc"
     { (yyvsp[(3) - (3)].tree)->left = (yyvsp[(1) - (3)].tree); (yyval.tree) = (yyvsp[(3) - (3)].tree); }
     break;
 
   case 89:
-#line 1040 "parser.yacc"
+#line 1130 "parser.yacc"
     { (yyval.tree) = NULL; }
     break;
 
 
 /* Line 1267 of yacc.c.  */
-#line 2750 "y.tab.c"
+#line 2840 "y.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2960,7 +3050,7 @@ yyreturn:
 }
 
 
-#line 1043 "parser.yacc"
+#line 1133 "parser.yacc"
 
 
 /* Function: main
@@ -3137,7 +3227,7 @@ int allocateStackSpace(SyntaxTree *declaration, int offset) {
 	
 	sprintf(declaration->symbol->location, "%d($sp)", offset);
 	
-	printf("Declaration %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
+	//printf("Declaration %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
 	
 	return allocateStackSpace(declaration->left, offset + 4);
 }
@@ -3156,33 +3246,49 @@ Code *constructCode(SyntaxTree *tree) {
 	constructCode(tree->right);
 	
 	switch (tree->operation) {
-		/*case ADD:
+		case ADD:
+			tree->code = createCode(ADD_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 	 	case SUB:
+			tree->code = createCode(SUB_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case MULT:
+			tree->code = createCode(MULT_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case DIV:
+			tree->code = createCode(DIV_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case NEG:
+			tree->code = createCode(NEG_OP, tree->symbol, NULL, tree->symbol);
+			break;
+		case NOT:
+			tree->code = createCode(NOT_OP, tree->symbol, NULL, tree->symbol);
 			break;
 		case EQUAL:
+			tree->code = createCode(EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case NOT_EQUAL:
+			tree->code = createCode(NOT_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case GREATER_THAN:
+			tree->code = createCode(GREATER_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case GREATER_EQUAL:
+			tree->code = createCode(GREATER_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case LESS_THAN:
+			tree->code = createCode(LESS_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case LESS_EQUAL:
+			tree->code = createCode(LESS_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case AND:
+			tree->code = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
 		case OR:
+			tree->code = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 			break;
-		case IF_TREE:
+		/*case IF_TREE:
 			break;
 		case WHILE_TREE:
 			break;*/
@@ -3271,7 +3377,10 @@ void writeCode(Code *code) {
 		return;
 	
 	switch (code->opcode) {
-		/*case ADD_OP:
+		case ADD_OP:
+			/*if (code->source1->location) {
+				if (code->source2->location) {
+					printf("\t*/
 			break;
 		case SUB_OP:
 			break;
@@ -3280,6 +3389,8 @@ void writeCode(Code *code) {
 		case DIV_OP:
 			break;
 		case NEG_OP:
+			break;
+		case NOT_OP:
 			break;
 		case EQUAL_OP:
 			break;
@@ -3297,7 +3408,7 @@ void writeCode(Code *code) {
 			break;
 		case OR_OP:
 			break;
-		case BRANCH_EQUAL:
+		/*case BRANCH_EQUAL:
 			break;
 		case BRANCH_NOT_EQUAL:
 			break;
@@ -3394,10 +3505,22 @@ void writeCode(Code *code) {
 				}
 			} else {
 				if (code->source1->type == CHAR_TYPE) {
-					printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
-					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-					printf("\tsb\t$t0, 0($sp)\n");
+					if (code->source1->value.charVal == '\n') {
+						printf("\t# pushing parameter '\\n'\n", code->source1->value.charVal);
+						printf("\tsubu\t$sp, $sp, 4\n");
+						printf("\tli\t$t0, 10\n", code->source1->value.charVal);
+						printf("\tsb\t$t0, 0($sp)\n");
+					} else if (code->source1->value.charVal == '\0') {
+						printf("\t# pushing parameter '\\0'\n", code->source1->value.charVal);
+						printf("\tsubu\t$sp, $sp, 4\n");
+						printf("\tli\t$t0, 0\n", code->source1->value.charVal);
+						printf("\tsb\t$t0, 0($sp)\n");
+					} else {
+						printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
+						printf("\tsubu\t$sp, $sp, 4\n");
+						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						printf("\tsb\t$t0, 0($sp)\n");
+					}
 				} else {
 					printf("\t# pushing parameter %d\n", code->source1->value.intVal);
 					printf("\tsubu\t$sp, $sp, 4\n");

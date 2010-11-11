@@ -25,6 +25,7 @@ typedef enum Opcode {
 	MULT_OP,
 	DIV_OP,
 	NEG_OP,
+	NOT_OP,
 	EQUAL_OP,
 	NOT_EQUAL_OP,
 	GREATER_THAN_OP,

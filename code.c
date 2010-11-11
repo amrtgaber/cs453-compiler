@@ -147,6 +147,8 @@ char *opcodeAsString(Opcode opcode) {
 		case DIV_OP:
 			return "/";
 		case NEG_OP:
+			return "NEGATION";
+		case NOT_OP:
 			return "!";
 		case EQUAL_OP:
 			return "==";
