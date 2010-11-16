@@ -315,7 +315,7 @@ char *typeAsString(Type type) {
 	if (type == UNKNOWN)
 		return "UNKNOWN";
 	
-	return "MISSING/UNRECOGNIZED TYPE";
+	return "MISSING/UNRECOGNIZED";
 }
 
 /* Function: functionTypeAsString
@@ -336,7 +336,7 @@ char *functionTypeAsString(FunctionType functionType) {
 	if (functionType == F_UNKNOWN)
 		return "UNKNOWN";
 	
-	return "MISSING/UNRECOGNIZED FUNCTION TYPE";
+	return "MISSING/UNRECOGNIZED";
 }
 
 /* Function: printParamList

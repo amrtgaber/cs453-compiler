@@ -190,11 +190,13 @@ char *opcodeAsString(Opcode opcode) {
 			return "PUSH PARAMETER";
 		case DECLARATION_OP:
 			return "DECLARATION";
+		case ARRAY_OP:
+			return "ARRAY INDEXING";
 		case WHILE_OP:
 			return "WHILE";
 		case RETURN_OP:
 			return "RETURN";
 		default:
-			return "MISSING/UNRECOGNIZED OPCODE";
+			return "MISSING/UNRECOGNIZED";
 	}
 }

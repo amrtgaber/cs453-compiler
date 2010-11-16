@@ -1,9 +1,11 @@
 extern void print_int(int n);
 extern void print_string(char s[]);
 
-void printX(int x), printA(int a), make10(int n), make5(int n, char a, int b, char c[]),
+void printX(int x), printA(int a), make10(int n), make5(int n),
 		takeIntArray(int n[]), takeCharArray(char c[]), onlyLocals(void),
-		onlyParameters(int param1, char param2, int param3[], char param4[]);
+		onlyParameters(int param1, char param2, int param3[], char param4[]),
+		parametersAndLocals(char p1, int p2, char p3[], int p4[]),
+		noVariables(void);
 
 int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[100];
 char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
@@ -30,7 +32,19 @@ void main(void) {
 	takeCharArray(charArray2);
 	onlyLocals();
 	onlyParameters(int1, char1, intArray1, charArray1);
+	parametersAndLocals('a', 1, charArray1, intArray1);
+	noVariables();
 	
+	x = 1 + 2 + 3;
+}
+
+void noVariables(void) {
+
+}
+
+void parametersAndLocals(char p1, int p2, char p3[], int p4[]) {
+	int local1, local2;
+	char local3, local4;
 }
 
 void onlyLocals(void) {
@@ -51,17 +65,15 @@ void takeCharArray(char c[]) {
 }
 
 void make10(int n) {
-	make5(3, '\n', int3, charArray2);
-	make5(50, '%', int3, charArray2);
+	make5(3);
+	make5(50);
 	print_string("making 10...\n");
 	n = 10;
 	x = 10;
 	return;
 }
 
-void make5(int n, char a, int b, char c[]) {
-	int local1, local2;
-	char local3, local4;
+void make5(int n) {
 	print_string("making 5...\n");
 	print_string("n = ");
 	print_int(n);
@@ -81,45 +93,3 @@ void printA(int a) {
 	print_int(a);
 	print_string("\n");
 }
-
-/*extern char permutation(char string[]);
-
-char permutationFound;
-
-int factorial(int num) {
-	if (num == 1)
-		return 1;
-	return num * factorial(num - 1);
-}
-
-int length(char string[]) {
-	char a;
-	int length;
-	
-	a = string[0];
-	length = 0;
-
-	while (a != '\0') {
-		length = length + 1;
-		a = string[length];
-	}
-	
-	return length;
-}
-
-void permute(char string[]) {
-	int i, permutations, length;
-	
-	length = length(string);
-	
-	permutations = factorial(length);
-	
-	for( i = 0; i < permutations; i = i + 1) {
-		if (permutation(string) == 'T') {
-			permutationFound = 1;
-			return;
-		} else {
-			permutationFound = 0;
-		}
-	}
-}*/

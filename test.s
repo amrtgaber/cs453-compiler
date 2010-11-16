@@ -42,12 +42,14 @@ _char2:
 .text
 
 main:
-	subu	$sp, $sp, 8
-	sw	$ra, 4($sp)
-	sw	$fp, 0($sp)
-	addu	$fp, $sp, 8
+	subu	$sp, $sp, 16
+	sw	$ra, 12($sp)
+	sw	$fp, 8($sp)
+	sw	$t0, 4($sp)
+	sw	$t1, 0($sp)
+	addu	$fp, $sp, 16
 
-	# char1 = #
+	# char1 = '#'
 	li	$t0, '#'
 	sb	$t0, _char1
 
@@ -197,7 +199,7 @@ main:
 	# pushing parameter char1
 	lb	$t0, _char1
 	subu	$sp, $sp, 4
-	sb	$t0, 0($sp)
+	sw	$t0, 0($sp)
 
 	# pushing parameter int1
 	lw	$t0, _int1
@@ -210,38 +212,127 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 16
 
+	# pushing parameter intArray1
+	la	$t0, _intArray1
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter charArray1
+	la	$t0, _charArray1
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# pushing parameter 1
+	subu	$sp, $sp, 4
+	li	$t0, 1
+	sw	$t0, 0($sp)
+
+	# pushing parameter 'a'
+	subu	$sp, $sp, 4
+	li	$t0, 'a'
+	sw	$t0, 0($sp)
+
+	# calling parametersAndLocals
+	jal	_parametersAndLocals
+
+	# popping pushed parameters
+	addu	$sp, $sp, 16
+
+	# calling noVariables
+	jal	_noVariables
+
+	# x = _temp13
+	sw	$t0, _x
+
 _mainReturn:
-	lw	$ra, 4($sp)
-	lw	$fp, 0($sp)
-	addu	$sp, $sp, 8
+	lw	$t1, 0($sp)
+	lw	$t0, 4($sp)
+	lw	$fp, 8($sp)
+	lw	$ra, 12($sp)
+	addu	$sp, $sp, 16
+	jr	$ra
+
+.text
+
+_noVariables:
+	subu	$sp, $sp, 16
+	sw	$ra, 12($sp)
+	sw	$fp, 8($sp)
+	sw	$t0, 4($sp)
+	sw	$t1, 0($sp)
+	addu	$fp, $sp, 16
+
+_noVariablesReturn:
+	lw	$t1, 0($sp)
+	lw	$t0, 4($sp)
+	lw	$fp, 8($sp)
+	lw	$ra, 12($sp)
+	addu	$sp, $sp, 16
+	jr	$ra
+
+.text
+
+_parametersAndLocals:
+	subu	$sp, $sp, 48
+	sw	$ra, 44($sp)
+	sw	$fp, 40($sp)
+	sw	$t0, 36($sp)
+	sw	$t1, 32($sp)
+	addu	$fp, $sp, 48
+	lw	$t0, 0($fp)		# storing local variable p1
+	sw	$t0, 28($sp)
+	lw	$t0, 4($fp)		# storing local variable p2
+	sw	$t0, 24($sp)
+	lw	$t0, 8($fp)		# storing local variable p3
+	sw	$t0, 20($sp)
+	lb	$t0, 12($fp)		# storing parameter p4
+	sb	$t0, 16($sp)
+	# initializing local variables
+	sw	$0, 12($sp)
+	sw	$0, 8($sp)
+	sw	$0, 4($sp)
+	sw	$0, 0($sp)
+
+_parametersAndLocalsReturn:
+	lw	$t1, 32($sp)
+	lw	$t0, 36($sp)
+	lw	$fp, 40($sp)
+	lw	$ra, 44($sp)
+	addu	$sp, $sp, 48
 	jr	$ra
 
 .text
 
 _onlyLocals:
-	subu	$sp, $sp, 24
-	sw	$ra, 20($sp)
-	sw	$fp, 16($sp)
-	addu	$fp, $sp, 24
+	subu	$sp, $sp, 32
+	sw	$ra, 28($sp)
+	sw	$fp, 24($sp)
+	sw	$t0, 20($sp)
+	sw	$t1, 16($sp)
+	addu	$fp, $sp, 32
 	# initializing local variables
-	sb	$0, 12($sp)
-	sb	$0, 8($sp)
+	sw	$0, 12($sp)
+	sw	$0, 8($sp)
 	sw	$0, 4($sp)
 	sw	$0, 0($sp)
 
 _onlyLocalsReturn:
-	lw	$ra, 20($sp)
-	lw	$fp, 16($sp)
-	addu	$sp, $sp, 24
+	lw	$t1, 16($sp)
+	lw	$t0, 20($sp)
+	lw	$fp, 24($sp)
+	lw	$ra, 28($sp)
+	addu	$sp, $sp, 32
 	jr	$ra
 
 .text
 
 _onlyParameters:
-	subu	$sp, $sp, 24
-	sw	$ra, 20($sp)
-	sw	$fp, 16($sp)
-	addu	$fp, $sp, 24
+	subu	$sp, $sp, 32
+	sw	$ra, 28($sp)
+	sw	$fp, 24($sp)
+	sw	$t0, 20($sp)
+	sw	$t1, 16($sp)
+	addu	$fp, $sp, 32
 	lw	$t0, 0($fp)		# storing local variable param1
 	sw	$t0, 12($sp)
 	lw	$t0, 4($fp)		# storing local variable param2
@@ -252,18 +343,22 @@ _onlyParameters:
 	sw	$t0, 0($sp)
 
 _onlyParametersReturn:
-	lw	$ra, 20($sp)
-	lw	$fp, 16($sp)
-	addu	$sp, $sp, 24
+	lw	$t1, 16($sp)
+	lw	$t0, 20($sp)
+	lw	$fp, 24($sp)
+	lw	$ra, 28($sp)
+	addu	$sp, $sp, 32
 	jr	$ra
 
 .text
 
 _takeIntArray:
-	subu	$sp, $sp, 12
-	sw	$ra, 8($sp)
-	sw	$fp, 4($sp)
-	addu	$fp, $sp, 12
+	subu	$sp, $sp, 20
+	sw	$ra, 16($sp)
+	sw	$fp, 12($sp)
+	sw	$t0, 8($sp)
+	sw	$t1, 4($sp)
+	addu	$fp, $sp, 20
 	lw	$t0, 0($fp)		# storing local variable n
 	sw	$t0, 0($sp)
 
@@ -271,51 +366,44 @@ _takeIntArray:
 	j	_takeIntArrayReturn
 
 _takeIntArrayReturn:
-	lw	$ra, 8($sp)
-	lw	$fp, 4($sp)
-	addu	$sp, $sp, 12
+	lw	$t1, 4($sp)
+	lw	$t0, 8($sp)
+	lw	$fp, 12($sp)
+	lw	$ra, 16($sp)
+	addu	$sp, $sp, 20
 	jr	$ra
 
 .text
 
 _takeCharArray:
-	subu	$sp, $sp, 12
-	sw	$ra, 8($sp)
-	sw	$fp, 4($sp)
-	addu	$fp, $sp, 12
+	subu	$sp, $sp, 20
+	sw	$ra, 16($sp)
+	sw	$fp, 12($sp)
+	sw	$t0, 8($sp)
+	sw	$t1, 4($sp)
+	addu	$fp, $sp, 20
 	lw	$t0, 0($fp)		# storing local variable c
 	sw	$t0, 0($sp)
 
 _takeCharArrayReturn:
-	lw	$ra, 8($sp)
-	lw	$fp, 4($sp)
-	addu	$sp, $sp, 12
+	lw	$t1, 4($sp)
+	lw	$t0, 8($sp)
+	lw	$fp, 12($sp)
+	lw	$ra, 16($sp)
+	addu	$sp, $sp, 20
 	jr	$ra
 
 .text
 
 _make10:
-	subu	$sp, $sp, 12
-	sw	$ra, 8($sp)
-	sw	$fp, 4($sp)
-	addu	$fp, $sp, 12
+	subu	$sp, $sp, 20
+	sw	$ra, 16($sp)
+	sw	$fp, 12($sp)
+	sw	$t0, 8($sp)
+	sw	$t1, 4($sp)
+	addu	$fp, $sp, 20
 	lw	$t0, 0($fp)		# storing local variable n
 	sw	$t0, 0($sp)
-
-	# pushing parameter charArray2
-	la	$t0, _charArray2
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# pushing parameter int3
-	lw	$t0, _int3
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# pushing parameter '\n'
-	subu	$sp, $sp, 4
-	li	$t0, 10
-	sb	$t0, 0($sp)
 
 	# pushing parameter 3
 	subu	$sp, $sp, 4
@@ -326,22 +414,7 @@ _make10:
 	jal	_make5
 
 	# popping pushed parameters
-	addu	$sp, $sp, 16
-
-	# pushing parameter charArray2
-	la	$t0, _charArray2
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# pushing parameter int3
-	lw	$t0, _int3
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# pushing parameter '%'
-	subu	$sp, $sp, 4
-	li	$t0, '%'
-	sb	$t0, 0($sp)
+	addu	$sp, $sp, 4
 
 	# pushing parameter 50
 	subu	$sp, $sp, 4
@@ -352,10 +425,10 @@ _make10:
 	jal	_make5
 
 	# popping pushed parameters
-	addu	$sp, $sp, 16
+	addu	$sp, $sp, 4
 
-	# pushing parameter _temp11
-	la	$t0, __temp11
+	# pushing parameter _temp16
+	la	$t0, __temp16
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -377,34 +450,27 @@ _make10:
 	j	_make10Return
 
 _make10Return:
-	lw	$ra, 8($sp)
-	lw	$fp, 4($sp)
-	addu	$sp, $sp, 12
+	lw	$t1, 4($sp)
+	lw	$t0, 8($sp)
+	lw	$fp, 12($sp)
+	lw	$ra, 16($sp)
+	addu	$sp, $sp, 20
 	jr	$ra
 
 .text
 
 _make5:
-	subu	$sp, $sp, 40
-	sw	$ra, 36($sp)
-	sw	$fp, 32($sp)
-	addu	$fp, $sp, 40
+	subu	$sp, $sp, 20
+	sw	$ra, 16($sp)
+	sw	$fp, 12($sp)
+	sw	$t0, 8($sp)
+	sw	$t1, 4($sp)
+	addu	$fp, $sp, 20
 	lw	$t0, 0($fp)		# storing local variable n
-	sw	$t0, 28($sp)
-	lw	$t0, 4($fp)		# storing local variable a
-	sw	$t0, 24($sp)
-	lb	$t0, 8($fp)		# storing parameter b
-	sb	$t0, 20($sp)
-	lw	$t0, 12($fp)		# storing local variable c
-	sw	$t0, 16($sp)
-	# initializing local variables
-	sb	$0, 12($sp)
-	sb	$0, 8($sp)
-	sw	$0, 4($sp)
-	sw	$0, 0($sp)
+	sw	$t0, 0($sp)
 
-	# pushing parameter _temp14
-	la	$t0, __temp14
+	# pushing parameter _temp19
+	la	$t0, __temp19
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -414,8 +480,8 @@ _make5:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# pushing parameter _temp15
-	la	$t0, __temp15
+	# pushing parameter _temp20
+	la	$t0, __temp20
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -426,7 +492,7 @@ _make5:
 	addu	$sp, $sp, 4
 
 	# pushing parameter n
-	lw	$t0, 28($sp)
+	lw	$t0, 0($sp)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -449,30 +515,34 @@ _make5:
 
 	# n = 5
 	li	$t0, 5
-	sw	$t0, 28($sp)
+	sw	$t0, 0($sp)
 
 	# x = n
-	lw	$t0, 28($sp)
+	lw	$t0, 0($sp)
 	sw	$t0, _x
 
 _make5Return:
-	lw	$ra, 36($sp)
-	lw	$fp, 32($sp)
-	addu	$sp, $sp, 40
+	lw	$t1, 4($sp)
+	lw	$t0, 8($sp)
+	lw	$fp, 12($sp)
+	lw	$ra, 16($sp)
+	addu	$sp, $sp, 20
 	jr	$ra
 
 .text
 
 _printX:
-	subu	$sp, $sp, 12
-	sw	$ra, 8($sp)
-	sw	$fp, 4($sp)
-	addu	$fp, $sp, 12
+	subu	$sp, $sp, 20
+	sw	$ra, 16($sp)
+	sw	$fp, 12($sp)
+	sw	$t0, 8($sp)
+	sw	$t1, 4($sp)
+	addu	$fp, $sp, 20
 	lw	$t0, 0($fp)		# storing local variable x
 	sw	$t0, 0($sp)
 
-	# pushing parameter _temp17
-	la	$t0, __temp17
+	# pushing parameter _temp22
+	la	$t0, __temp22
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -505,23 +575,27 @@ _printX:
 	addu	$sp, $sp, 4
 
 _printXReturn:
-	lw	$ra, 8($sp)
-	lw	$fp, 4($sp)
-	addu	$sp, $sp, 12
+	lw	$t1, 4($sp)
+	lw	$t0, 8($sp)
+	lw	$fp, 12($sp)
+	lw	$ra, 16($sp)
+	addu	$sp, $sp, 20
 	jr	$ra
 
 .text
 
 _printA:
-	subu	$sp, $sp, 12
-	sw	$ra, 8($sp)
-	sw	$fp, 4($sp)
-	addu	$fp, $sp, 12
+	subu	$sp, $sp, 20
+	sw	$ra, 16($sp)
+	sw	$fp, 12($sp)
+	sw	$t0, 8($sp)
+	sw	$t1, 4($sp)
+	addu	$fp, $sp, 20
 	lw	$t0, 0($fp)		# storing local variable a
 	sw	$t0, 0($sp)
 
-	# pushing parameter _temp18
-	la	$t0, __temp18
+	# pushing parameter _temp23
+	la	$t0, __temp23
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -554,26 +628,28 @@ _printA:
 	addu	$sp, $sp, 4
 
 _printAReturn:
-	lw	$ra, 8($sp)
-	lw	$fp, 4($sp)
-	addu	$sp, $sp, 12
+	lw	$t1, 4($sp)
+	lw	$t0, 8($sp)
+	lw	$fp, 12($sp)
+	lw	$ra, 16($sp)
+	addu	$sp, $sp, 20
 	jr	$ra
 
 .data
 
-__temp18:
+__temp23:
 	.asciiz	"a = "
 
-__temp17:
+__temp22:
 	.asciiz	"x = "
 
-__temp15:
+__temp20:
 	.asciiz	"n = "
 
-__temp14:
+__temp19:
 	.asciiz	"making 5...\n"
 
-__temp11:
+__temp16:
 	.asciiz	"making 10...\n"
 
 __temp6:

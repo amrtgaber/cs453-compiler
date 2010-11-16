@@ -40,8 +40,10 @@ typedef enum Operator {
 	WHILE_TREE,
 	RETURN_TREE,
 	SYMBOL,
+	LITERAL,
+	ARRAY,
 	DECLARATION,
-	PARAMETER_TREE,
+	PARAMETER,
 	STATEMENT,
 	FUNCTION_ROOT,
 	FUNCTION_CALL
@@ -54,7 +56,7 @@ typedef struct SyntaxTree {
 	Operator 	operation;
 	Symbol		*symbol;
 	Code 		*code;
-	struct SyntaxTree *left, *right, *elseOpt;
+	struct SyntaxTree *left, *right, *opt;
 } SyntaxTree;
 
 /************************
