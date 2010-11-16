@@ -28,7 +28,7 @@ SyntaxTree *createTree(Operator operation, Symbol *symbol, SyntaxTree *left,
 	newTree->code = NULL;
 	newTree->left = left;
 	newTree->right = right;
-	newTree->elseOpt = NULL;
+	newTree->opt = NULL;
 	
 	return newTree;
 }
@@ -45,7 +45,7 @@ void destroyTree(SyntaxTree *tree) {
 	
 	destroyTree(tree->left);
 	destroyTree(tree->right);
-	destroyTree(tree->elseOpt);
+	destroyTree(tree->opt);
 	
 	free(tree);
 }
@@ -168,7 +168,11 @@ char *operatorAsString(Operator operation){
 			return "RETURN_TREE";
 		case SYMBOL:
 			return "SYMBOL";
-		case PARAMETER_TREE:
+		case LITERAL:
+			return "LITERAL";
+		case ARRAY:
+			return "ARRAY INDEXING";
+		case PARAMETER:
 			return "PARAMETER";
 		case DECLARATION:
 			return "DECLARATION";
@@ -179,6 +183,6 @@ char *operatorAsString(Operator operation){
 		case FUNCTION_CALL:
 			return "FUNCTION_CALL";
 		default:
-			return "MISSING/UNRECOGNIZED TREE OPERATOR";
+			return "MISSING/UNRECOGNIZED";
 	}
 }

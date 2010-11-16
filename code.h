@@ -46,6 +46,7 @@ typedef enum Opcode {
 	LEAVE,
 	PUSH_PARAM,
 	DECLARATION_OP,
+	ARRAY_OP,
 	WHILE_OP,
 	RETURN_OP
 } Opcode;
