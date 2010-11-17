@@ -168,20 +168,22 @@ char *operatorAsString(Operator operation){
 			return "RETURN_TREE";
 		case SYMBOL:
 			return "SYMBOL";
-		case LITERAL:
-			return "LITERAL";
 		case ARRAY:
 			return "ARRAY INDEXING";
 		case PARAMETER:
-			return "PARAMETER";
+			return "ACTUAL PARAMETER";
 		case DECLARATION:
 			return "DECLARATION";
+		case FORMAL:
+			return "FORMAL PARAMETER";
 		case STATEMENT:
 			return "STATEMENT";
 		case FUNCTION_ROOT:
 			return "FUNCTION_ROOT";
 		case FUNCTION_CALL:
 			return "FUNCTION_CALL";
+		case RETRIEVE:
+			return "RETRIEVE";
 		default:
 			return "MISSING/UNRECOGNIZED";
 	}

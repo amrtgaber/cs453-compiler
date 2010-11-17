@@ -13,6 +13,11 @@
 #include "code.h"
 #include "functionCall.h"
 
+typedef struct TempVariable {
+	Symbol *symbol;
+	struct TempVariable *next;
+} TempVariable;
+
 typedef struct StringLiteral {
 	Symbol 	*symbol;
 	struct StringLiteral *next;
@@ -30,7 +35,9 @@ void 	typeError(char *errorMessage),
 		declareGlobalVariables(SyntaxTree *tree),
 		writeCode(Code *code),
 		insertStringLiteral(Symbol *stringLiteral),
-		popStringLiterals(StringLiteral *stringLiteral);
+		popStringLiterals(StringLiteral *stringLiteral),
+		insertTempVariable(Symbol *tempVariable),
+		popTempVariables(TempVariable *tempVariable);
 int		allocateStackSpace(SyntaxTree *declaration, int offset);
 Symbol	*recallStringLiteral(char *string);
 Code	*constructCode(SyntaxTree *tree);
@@ -50,8 +57,7 @@ char	*_currID = NULL,
 		_generateCode = TRUE,
 		_errorMessage[255],
 		_tempID[15],				// up to 10 billion temps > unsigned int max
-		_labelID[16],				// up to 10 billion labels > unsigned int max
-		_t0[4] = { '$', 't', '0', '\0' };	// register string "$t0"
+		_labelID[16];				// up to 10 billion labels > unsigned int max
 unsigned int	_tempNum = 0,
 				_labelNum = 0,
 				_stackSize = 0;
@@ -60,6 +66,7 @@ Type	_currType = UNKNOWN,
 FunctionType _currFType = F_UNKNOWN;
 Parameter *_currParam = NULL;
 StringLiteral *_stringLiterals = NULL;
+TempVariable *_tempVariables = NULL;
 %}
 
 %union {
@@ -296,12 +303,12 @@ arrayTypeOpt: storePType ID
 						} else {
 							Symbol *currSymbol = insert(_currID, _currPType);
 						    currSymbol->functionType = NON_FUNCTION;
-							$$ = createTree(DECLARATION, currSymbol, NULL, NULL);
+							$$ = createTree(FORMAL, currSymbol, NULL, NULL);
 						}
 			  	 	} else {
 				  		Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					    currSymbol->functionType = NON_FUNCTION;
-						$$ = createTree(DECLARATION, currSymbol, NULL, NULL);
+						$$ = createTree(FORMAL, currSymbol, NULL, NULL);
 			  		}
 				}
 				
@@ -335,12 +342,12 @@ arrayTypeOpt: storePType ID
 					  } else {
 						  Symbol *currSymbol = insert(_currID, _currPType);
 						  currSymbol->functionType = NON_FUNCTION;
-						  $$ = createTree(DECLARATION, currSymbol, NULL, NULL);
+						  $$ = createTree(FORMAL, currSymbol, NULL, NULL);
 					  }
 			  	  } else {
 				  	  Symbol *currSymbol = addParameter(_currID, _currPType, currentFunction);
 					  currSymbol->functionType = NON_FUNCTION;
-					  $$ = createTree(DECLARATION, currSymbol, NULL, NULL);
+					  $$ = createTree(FORMAL, currSymbol, NULL, NULL);
 			  	  }
 			  }
 			
@@ -456,21 +463,19 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  else
 				  printf("_%s:\n", _currFID);
 			
-			  _stackSize = 16;
+			  _stackSize = 8;
 			  _stackSize += allocateStackSpace($8, 0);
 
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
-			  printf("\tsw\t$t0, %d($sp)\n", _stackSize - 12);
-  			  printf("\tsw\t$t1, %d($sp)\n", _stackSize - 16);
 			  printf("\taddu\t$fp, $sp, %d\n", _stackSize);
 			  
 			  SyntaxTree *parameter = $5;
 			  SyntaxTree *parameterName = $5;
 			  int i, j, k, l;
 			  i = j = k = l = 0;
-			  for(i = 20, j = 0; parameter; i += 4, j += 4) {
+			  for(i = 12, j = 0; parameter; i += 4, j += 4) {
 					
 					// this 'if' is just to get the parameter names in order
 					l = 0;
@@ -493,7 +498,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 						printf("\tlb\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
 						printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
 					} else {
-						printf("\tlw\t$t0, %d($fp)\t\t# storing local variable %s\n", j, parameterName->symbol->identifier);
+						printf("\tlw\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
 						printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
 					}
 					
@@ -504,7 +509,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  	  printf("\t# initializing local variables\n");
 			
 				  for( ; i <= _stackSize; i += 4)
-					  printf("\tsw\t$0, %d($sp)\n", _stackSize - i);  	  
+					  printf("\tsw\t$0, %d($sp)\n", _stackSize - i);
 			  }
 
 			  Code *code = constructCode(function);
@@ -517,8 +522,6 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  #endif
 			
 			  printf("\n_%sReturn:\n", _currFID);
-			  printf("\tlw\t$t1, %d($sp)\n", _stackSize - 16);
-  			  printf("\tlw\t$t0, %d($sp)\n", _stackSize - 12);
 			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\tlw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
@@ -709,7 +712,7 @@ assignment:	  storeID '=' expr
 			{
 			  _currID = $1;
 			  Symbol *currSymbol = recall(_currID);
-			
+
 			  if (!currSymbol) {
 				  sprintf(_errorMessage, "%s undefined", _currID);
 				  typeError(_errorMessage);
@@ -758,6 +761,15 @@ assignment:	  storeID '=' expr
 							_currID);
 						typeError(_errorMessage);
 				  }
+				
+				SyntaxTree *symbolTree = createTree(SYMBOL, currSymbol, NULL, NULL);
+				generateNewTempID();
+				Symbol *newSymbol = insertGlobal(_tempID, currSymbol->type);
+				if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+					  ERROR(NULL, __LINE__, TRUE);				//out of memory
+				sprintf(newSymbol->location, "_%s", newSymbol->identifier);
+				SyntaxTree *array = createTree(ARRAY, newSymbol, symbolTree, $3.tree);
+				$$ = createTree(ASSIGNMENT, NULL, array, $6.tree);
 			  }
 			}
 			;
@@ -774,7 +786,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = $2.type;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, $2.type);
+			  Symbol *newSymbol = insertGlobal(_tempID, $2.type);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(NEG, newSymbol, $2.tree, NULL);
 			}
 			| '!' expr
@@ -785,7 +801,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = $2.type;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(NOT, newSymbol, $2.tree, NULL);
 			}
 			| expr '+' expr
@@ -797,7 +817,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = $1.type;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  Symbol *newSymbol = insertGlobal(_tempID, $1.type);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(ADD, newSymbol, $3.tree, $1.tree);
 			}
 			| expr '-' expr
@@ -809,7 +833,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = $1.type;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  Symbol *newSymbol = insertGlobal(_tempID, $1.type);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(SUB, newSymbol, $3.tree, $1.tree);
 			}
 			| expr '*' expr
@@ -821,7 +849,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = $1.type;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  Symbol *newSymbol = insertGlobal(_tempID, $1.type);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(MULT, newSymbol, $3.tree, $1.tree);
 			}
 			| expr '/' expr
@@ -833,7 +865,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = $1.type;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, $1.type);
+			  Symbol *newSymbol = insertGlobal(_tempID, $1.type);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(DIV, newSymbol, $3.tree, $1.tree);
 			}
 			| expr DBLEQ expr
@@ -845,7 +881,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(EQUAL, newSymbol, $3.tree, $1.tree);
 			}
 			| expr NOTEQ expr
@@ -857,7 +897,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(NOT_EQUAL, newSymbol, $3.tree, $1.tree);
 			}
 			| expr LTEQ expr
@@ -869,7 +913,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(LESS_EQUAL, newSymbol, $3.tree, $1.tree);
 			}
 			| expr '<' expr
@@ -881,7 +929,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(LESS_THAN, newSymbol, $3.tree, $1.tree);
 			}
 			| expr GTEQ expr
@@ -893,7 +945,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(GREATER_EQUAL, newSymbol, $3.tree, $1.tree);
 			}
 			| expr '>' expr
@@ -905,7 +961,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(GREATER_THAN, newSymbol, $3.tree, $1.tree);
 			}
 			| expr LOGICAND expr
@@ -916,7 +976,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(AND, newSymbol, $3.tree, $1.tree);
 			}
 			| expr LOGICOR expr
@@ -927,7 +991,11 @@ expr:		  '-' expr %prec UMINUS
 			  $$.type = BOOLEAN;
 			
 			  generateNewTempID();
-			  Symbol *newSymbol = insert(_tempID, BOOLEAN);
+			  Symbol *newSymbol = insertGlobal(_tempID, BOOLEAN);
+			  insertTempVariable(newSymbol);
+			  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+				  ERROR(NULL, __LINE__, TRUE);				//out of memory
+			  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
 			  $$.tree = createTree(OR, newSymbol, $3.tree, $1.tree);
 			}
 			| ID
@@ -1006,7 +1074,14 @@ multiFuncOpt: '('')'
 			          typeError(_errorMessage);
 			      }
 				  $$.type = currSymbol->type;
-				  $$.tree = createTree(FUNCTION_CALL, currSymbol, NULL, NULL);
+				  generateNewTempID();
+				  Symbol *newSymbol = insertGlobal(_tempID, currSymbol->type);
+				  insertTempVariable(newSymbol);
+				  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+					  ERROR(NULL, __LINE__, TRUE);				//out of memory
+				  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
+				  SyntaxTree *tree = createTree(FUNCTION_CALL, currSymbol, NULL, NULL);
+				  $$.tree = createTree(RETRIEVE, newSymbol, tree, NULL);
 			  } else {
 				  $$.type = UNKNOWN;
 				  $$.tree = NULL;
@@ -1044,9 +1119,24 @@ multiFuncOpt: '('')'
 						  tree = tree->left;
 
 				  	  tree->left = $3;
-				      $$.tree = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $4, NULL);
+					  
+					  generateNewTempID();
+					  Symbol *newSymbol = insertGlobal(_tempID, $$.type);
+					  insertTempVariable(newSymbol);
+					  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+						  ERROR(NULL, __LINE__, TRUE);				//out of memory
+					  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
+					  SyntaxTree *tree = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $4, NULL);
+					  $$.tree = createTree(RETRIEVE, newSymbol, tree, NULL);
 				  } else {
-					  $$.tree = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $3, NULL);
+					  generateNewTempID();
+					  Symbol *newSymbol = insertGlobal(_tempID, $$.type);
+					  insertTempVariable(newSymbol);
+					  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+						  ERROR(NULL, __LINE__, TRUE);				//out of memory
+					  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
+					  SyntaxTree *tree = createTree(FUNCTION_CALL, recallGlobal(_callStack->identifier), $3, NULL);
+					  $$.tree = createTree(RETRIEVE, newSymbol, tree, NULL);
 				  }
 				
 			      popFunctionCall();
@@ -1083,16 +1173,20 @@ multiFuncOpt: '('')'
 				  $$.tree = NULL;
 			  } else {
 				  $$.type = (recall(_callStack->identifier))->type;
-					
+				
+				  generateNewTempID();
+				  Symbol *newSymbol = insertGlobal(_tempID, $$.type);
+				  insertTempVariable(newSymbol);
+				  if (!(newSymbol->location = malloc(strlen(newSymbol->identifier) + 2)))
+					  ERROR(NULL, __LINE__, TRUE);				//out of memory
+				  sprintf(newSymbol->location, "_%s", newSymbol->identifier);
+				  SyntaxTree *tree = createTree(SYMBOL, recall(_callStack->identifier), NULL, NULL);
+				  $$.tree = createTree(ARRAY, newSymbol, tree, $3.tree);
+				
 				  if ($$.type == CHAR_ARRAY)
 					  $$.type = CHAR_TYPE;
 				  else
 					  $$.type = INT_TYPE;
-				
-				  generateNewTempID();
-				  Symbol *newSymbol = insert(_tempID, $$.type);
-				  SyntaxTree *newTree = createTree(SYMBOL, recall(_callStack->identifier), NULL, NULL);
-				  $$.tree = createTree(ARRAY, newSymbol, newTree, $3.tree);
 				
 				  popFunctionCall();
 			  }
@@ -1163,6 +1257,7 @@ main() {
 	yyparse();
 	
 	printf("\n.data\n");
+	popTempVariables(_tempVariables);
 	popStringLiterals(_stringLiterals);
 	
 	popSymbolTable();				// free global symbol table
@@ -1183,6 +1278,51 @@ main() {
 	if (_generateCode)
 		return 0;					// success
 	return 1;						// failure
+}
+
+/* Function: insertTempVariable
+ * Parameters: Symbol *tempVariable
+ * Description: Adds the given temp variable to the list of temp variables.
+ * Returns: none
+ * Preconditions: none
+ */
+void insertTempVariable(Symbol *tempVariable) {
+	if (!tempVariable)
+		return;
+	
+	TempVariable *newTemp = NULL;
+	
+	if (!(newTemp = malloc(sizeof(TempVariable))))
+		ERROR(NULL, __LINE__, TRUE);					// out of memory
+		
+	newTemp->symbol = tempVariable;
+	
+	newTemp->next = _tempVariables;
+	_tempVariables = newTemp;
+}
+
+/* Function: popTempVariables
+ * Parameters: TempVariable *tempVariable
+ * Description: Writes all global temps into mips global data and frees temp
+ *					variables list.
+ * Returns: none
+ * Preconditions: none
+ */
+void popTempVariables(TempVariable *tempVariable) {
+	if (!tempVariable)
+		return;
+	
+	printf("\n");
+	printf("_%s:\n", tempVariable->symbol->identifier);
+
+	if (tempVariable->symbol->type == CHAR_TYPE)
+		printf("\t.byte 0\n");
+	else
+		printf("\t.word 0\n");
+	
+	
+	popTempVariables(tempVariable->next);
+	free(tempVariable);
 }
 
 /* Function: insertStringLiteral
@@ -1249,7 +1389,7 @@ void popStringLiterals(StringLiteral *stringLiteral) {
 	free(stringLiteral);
 }
 
-/* Function: yyError
+/* Function: yyerror
  * Parameters: char *errorMessage
  * Description: Called when syntax errors are found. Prints error message and
  *					turns code generation off.
@@ -1327,6 +1467,22 @@ int allocateStackSpace(SyntaxTree *declaration, int offset) {
 	
 	//printf("Declaration %s has location %s\n", declaration->symbol->identifier, declaration->symbol->location);
 	
+	if (declaration->operation != FORMAL) {
+		
+		if (declaration->symbol->type == CHAR_ARRAY) {
+			offset += declaration->symbol->value.intVal;
+			if (offset % 4 != 0)
+				offset += 4 - (offset % 4);
+			return allocateStackSpace(declaration->left, offset);
+		}
+	
+		if (declaration->symbol->type == INT_ARRAY) {
+			offset += 4 * declaration->symbol->value.intVal;
+			return allocateStackSpace(declaration->left, offset);
+		}
+		
+	}
+	
 	return allocateStackSpace(declaration->left, offset + 4);
 }
 
@@ -1347,64 +1503,512 @@ Code *constructCode(SyntaxTree *tree) {
 	
 	switch (tree->operation) {
 		case ADD:
-			tree->code = createCode(ADD_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+		
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(ADD_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(ADD_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(ADD_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+			
 			break;
 	 	case SUB:
-			tree->code = createCode(SUB_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+	
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(SUB_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(SUB_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(SUB_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+			
 			break;
 		case MULT:
-			tree->code = createCode(MULT_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(MULT_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(MULT_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(MULT_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+			
 			break;
 		case DIV:
-			tree->code = createCode(DIV_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(DIV_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(DIV_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(DIV_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+			
 			break;
 		case NEG:
-			tree->code = createCode(NEG_OP, tree->symbol, NULL, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(NEG_OP, tree->left->symbol, NULL, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(NEG_OP, tree->left->symbol, NULL, tree->symbol);
+			} else {
+				tree->code = createCode(NEG_OP, tree->left->symbol, NULL, tree->symbol);
+			}
+			
 			break;
 		case NOT:
-			tree->code = createCode(NOT_OP, tree->symbol, NULL, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(NOT_OP, tree->left->symbol, NULL, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(NOT_OP, tree->left->symbol, NULL, tree->symbol);
+			} else {
+				tree->code = createCode(NOT_OP, tree->left->symbol, NULL, tree->symbol);
+			}
+
 			break;
 		case EQUAL:
-			tree->code = createCode(EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+		
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case NOT_EQUAL:
-			tree->code = createCode(NOT_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(NOT_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(NOT_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(NOT_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case GREATER_THAN:
-			tree->code = createCode(GREATER_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(GREATER_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(GREATER_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(GREATER_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case GREATER_EQUAL:
-			tree->code = createCode(GREATER_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+		
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(GREATER_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(GREATER_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(GREATER_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case LESS_THAN:
-			tree->code = createCode(LESS_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(LESS_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(LESS_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(LESS_THAN_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case LESS_EQUAL:
-			tree->code = createCode(LESS_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(LESS_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(LESS_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(LESS_EQUAL_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case AND:
-			tree->code = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case OR:
-			tree->code = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+		
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
 			break;
 		case ARRAY:
-			tree->code = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
-			tree->symbol->location = strdup(_t0);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+				
+				code->next = createCode(ARRAY_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(ARRAY_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+
+			break;
+		case RETRIEVE:
+			
+			if (tree->left->code) {
+				tree->code = tree->left->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+				
+				code->next = createCode(RETRIEVE_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			} else {
+				tree->code = createCode(RETRIEVE_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+			}
+			
 			break;
 		/*case IF_TREE:
 			break;
@@ -1417,7 +2021,38 @@ Code *constructCode(SyntaxTree *tree) {
 				; // return expr
 			break;
 		case ASSIGNMENT:
-			tree->code = createCode(ASSIGNMENT_OP, tree->right->symbol, NULL, tree->left->symbol);
+			
+			if (tree->right->code) {
+				tree->code = tree->right->code;
+			
+				code = tree->code;
+			
+				while (code->next)
+					code = code->next;
+			
+				code->next = tree->left->code;
+				
+				if (tree->left->code) {
+					code = tree->left->code;
+					
+					while(code->next)
+						code = code->next;
+				}
+				
+				code->next = createCode(ASSIGNMENT_OP, tree->right->symbol, NULL, tree->left->symbol);
+			} else if (tree->left->code) {
+				tree->code = tree->left->code;
+				
+				code = tree->code;
+				
+				while(code->next)
+					code = code->next;
+				
+				code->next = createCode(ASSIGNMENT_OP, tree->right->symbol, NULL, tree->left->symbol);
+			} else {
+				tree->code = createCode(ASSIGNMENT_OP, tree->right->symbol, NULL, tree->left->symbol);
+			}
+			
 			break;
 		case STATEMENT:
 			if (tree->right) {
@@ -1467,14 +2102,10 @@ Code *constructCode(SyntaxTree *tree) {
 			
 			break;
 		case DECLARATION:
-			tree->code = createCode(DECLARATION_OP, tree->symbol, NULL, NULL);
-			
-			if (tree->left)
-				tree->code->next = tree->left->code;
 			break;
 		case SYMBOL:
 			break;
-		case LITERAL:
+		case FORMAL:
 			break;
 		case FUNCTION_ROOT:
 			if (tree->left && tree->left->code) {
@@ -1511,49 +2142,476 @@ void writeCode(Code *code) {
 	
 	switch (code->opcode) {
 		case ADD_OP:
-			/*if (code->source1->location) {
-					
+			printf("\n");
+			
+			if (code->source1->location) {
+
 				if (code->source2->location) {
+					
 					printf("\t# %s + %s\n", code->source1->identifier, code->source2->identifier);
+					
 					if (code->source2->type == CHAR_TYPE)
-						printf"\tlb\t$t1, %s\n", code->source2->location);
+						printf("\tlb\t$t1, %s\n", code->source2->location);
 					else
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					
 					if (code->source1->type == CHAR_TYPE)
-						printf"\tlb\t$t0, %s\n", code->source1->location);
+						printf("\tlb\t$t0, %s\n", code->source1->location);
 					else
 						printf("\tlw\t$t0, %s\n", code->source1->location);
-					
-					printf("\tadd\t$t0, $t0, $t1\n");
+						
 				} else {
+					
 					if (code->source2->type == CHAR_TYPE) {
 						if (code->source2->value.charVal == '\n') {
 							printf("\t# %s + '\\n'\n", code->source1->identifier);
-							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
-						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
 							printf("\t# %s + '\\0'\n", code->source1->identifier);
-							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
 						} else {
 							printf("\t# %s + '%c'\n", code->source1->identifier, code->source2->value.charVal);
-							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
 						}
-						printf"\tlb\t$t1, %s\n", code->source2->location);
 					} else {
-						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\t# %s + %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
 					}
 					
-					printf("\tadd\t$t0, $t0, $t1\n");
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tlb\t$t0, %s\n", code->source1->location);
+					else
+						printf("\tlw\t$t0, %s\n", code->source1->location);
+						
 				}
-*/
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' + %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' + %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' + %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d + %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE)
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					else
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+				
+				} else {
+					
+					printf("\t# %s + %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tadd\t$t0, $t0, $t1\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+
 			break;
 		case SUB_OP:
+			printf("\n");
+			
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s - %s\n", code->source2->identifier, code->source1->identifier);
+					
+					if (code->source2->type == CHAR_TYPE)
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					else
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tlb\t$t0, %s\n", code->source1->location);
+					else
+						printf("\tlw\t$t0, %s\n", code->source1->location);
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# '\\n' - %s\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# '\\0' - %s\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' - %s\n", code->source2->value.charVal, code->source1->identifier);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %d - %s\n", code->source2->value.intVal, code->source1->identifier);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+					
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tlb\t$t0, %s\n", code->source1->location);
+					else
+						printf("\tlw\t$t0, %s\n", code->source1->location);
+						
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# %s - '\\n'\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# %s - '\\0'\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s - '%c'\n", code->source2->identifier, code->source1->value.charVal);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %s - %d\n", code->source2->identifier, code->source1->value.intVal);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE)
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					else
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+				
+				} else {
+					
+					printf("\t# %s - %s\n", code->source2->identifier, code->source1->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tsub\t$t0, $t1, $t0\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+			
 			break;
 		case MULT_OP:
+			printf("\n");
+			
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s * %s\n", code->source1->identifier, code->source2->identifier);
+					
+					if (code->source2->type == CHAR_TYPE)
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					else
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tlb\t$t0, %s\n", code->source1->location);
+					else
+						printf("\tlw\t$t0, %s\n", code->source1->location);
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# %s * '\\n'\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# %s * '\\0'\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s * '%c'\n", code->source1->identifier, code->source2->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %s * %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+					
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tlb\t$t0, %s\n", code->source1->location);
+					else
+						printf("\tlw\t$t0, %s\n", code->source1->location);
+						
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' * %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' * %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' * %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d * %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE)
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					else
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+				
+				} else {
+					
+					printf("\t# %s * %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tmul\t$t0, $t0, $t1\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+			
 			break;
 		case DIV_OP:
+			printf("\n");
+			
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s / %s\n", code->source2->identifier, code->source1->identifier);
+					
+					if (code->source2->type == CHAR_TYPE)
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					else
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tlb\t$t0, %s\n", code->source1->location);
+					else
+						printf("\tlw\t$t0, %s\n", code->source1->location);
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# '\\n' / %s\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# '\\0' / %s\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' / %s\n", code->source2->value.charVal, code->source1->identifier);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %d / %s\n", code->source2->value.intVal, code->source1->identifier);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+					
+					if (code->source1->type == CHAR_TYPE)
+						printf("\tlb\t$t0, %s\n", code->source1->location);
+					else
+						printf("\tlw\t$t0, %s\n", code->source1->location);
+						
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# %s / '\\n'\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# %s / '\\0'\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s / '%c'\n", code->source2->identifier, code->source1->value.charVal);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %s / %d\n", code->source2->identifier, code->source1->value.intVal);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE)
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					else
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+				
+				} else {
+					
+					printf("\t# %s / %s\n", code->source2->identifier, code->source1->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tdiv\t$t0, $t1, $t0\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+			
 			break;
 		case NEG_OP:
+			printf("\n");
+		
+			if (code->source1->location) {
+					
+				printf("\t# -%s\n", code->source1->identifier);
+					
+				if (code->source1->type == CHAR_TYPE)
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				else
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					
+			} else {
+					
+				if (code->source1->type == CHAR_TYPE) {
+					if (code->source1->value.charVal == '\n') {
+						printf("\t# -'\\n'\n");
+						printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+					} else if (code->source1->value.charVal == '\0') {
+						printf("\t# -'\\0'\n");
+						printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+					} else {
+						printf("\t# -'%c'\n", code->source1->value.charVal);
+						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+					}
+				} else {
+					printf("\t# -%d\n", code->source1->value.intVal);
+					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+				}
+				
+			}
+			
+			printf("\tneg\t$t0, $t0\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+			
 			break;
 		case NOT_OP:
 			break;
@@ -1573,6 +2631,8 @@ void writeCode(Code *code) {
 			break;
 		case OR_OP:
 			break;
+		case RETRIEVE_OP:
+			break;
 		/*case BRANCH_EQUAL:
 			break;
 		case BRANCH_NOT_EQUAL:
@@ -1587,7 +2647,9 @@ void writeCode(Code *code) {
 			break;
 		case JUMP:
 			break;
-		case WHILE_OP:
+		case WHILE_OP: // if an infinite loop occurs in the runtime environment
+		 				// and there is no output around to display it
+						// does it still affect your resources?
 			break;*/
 		case RETURN_OP:
 			printf("\n");
@@ -1598,23 +2660,33 @@ void writeCode(Code *code) {
 				; // return expr
 			}
 			break;
-		case ASSIGNMENT_OP:
+		case ARRAY_OP:
+			printf("\n");
+			
+			printf("\tla\t$t0, %s\n", code->source1->location);
+			
+			if (code->source2->type == CHAR_TYPE)
+				printf("\tlb\t$t1, %s\n", code->source2->location);
+			else
+				printf("\tlw\t$t1, %s\n", code->source2->location);
+				
+			printf("\tadd\t$t0, $t0, $t1\n");
+			printf("\tsw\t$t0, %s\n", code->destination->location);
+			
+			break;
+		case ASSIGNMENT_OP:	// GET WORKING ASSIGNING TO ARRAY INDEX
 			printf("\n");
 			if (code->source1->location) {
+				
 				printf("\t# %s = %s\n", code->destination->identifier, code->source1->identifier);
-				
-				if (strcmp(code->source1->location, _t0) != 0) {
-					if (code->source1->type == CHAR_TYPE)
-						printf("\tlb\t$t0, %s\n", code->source1->location);
-					else
-						printf("\tlw\t$t0, %s\n", code->source1->location);
-				}
-				
-				if (code->destination->type == CHAR_TYPE)
-					printf("\tsb\t$t0, %s\n", code->destination->location);
+
+				if (code->source1->type == CHAR_TYPE)
+					printf("\tlb\t$t0, %s\n", code->source1->location);
 				else
-					printf("\tsw\t$t0, %s\n", code->destination->location);
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					
 			} else {
+				
 				if (code->source1->type == CHAR_TYPE) {
 					if (code->source1->value.charVal == '\n') {
 						printf("\t# %s = '\\n'\n", code->destination->identifier);
@@ -1626,23 +2698,17 @@ void writeCode(Code *code) {
 						printf("\t# %s = '%c'\n", code->destination->identifier, code->source1->value.charVal);
 						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
 					}
-					
-					if (code->destination->type == CHAR_TYPE)
-						printf("\tsb\t$t0, %s\n", code->destination->location);
-					else
-						printf("\tsw\t$t0, %s\n", code->destination->location);
-				} else if (code->source1->type == INT_TYPE) {
+				} else {
 					printf("\t# %s = %d\n", code->destination->identifier, code->source1->value.intVal);
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
-					
-					if (code->destination->type == CHAR_TYPE)
-						printf("\tsb\t$t0, %s\n", code->destination->location);
-					else
-						printf("\tsw\t$t0, %s\n", code->destination->location);
-				} else {
-					; // arrays?
 				}
+				
 			}
+			
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
 			break;
 		case ENTER:
 			printf("\n");
@@ -1673,11 +2739,9 @@ void writeCode(Code *code) {
 			printf("\n");
 			
 			if (code->source1->location) {
+				
 				printf("\t# pushing parameter %s\n", code->source1->identifier);
-				if (strcmp(code->source1->location, _t0) == 0) {
-					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tsw\t$t0, 0($sp)\n");
-				} else if (code->source1->type == CHAR_TYPE) {
+				if (code->source1->type == CHAR_TYPE) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
 					printf("\tsw\t$t0, 0($sp)\n");
@@ -1690,7 +2754,9 @@ void writeCode(Code *code) {
 					printf("\tsubu\t$sp, $sp, 4\n");
 					printf("\tsw\t$t0, 0($sp)\n");
 				}
+				
 			} else {
+				
 				if (code->source1->type == CHAR_TYPE) {
 					if (code->source1->value.charVal == '\n') {
 						printf("\t# pushing parameter '\\n'\n", code->source1->value.charVal);
@@ -1708,11 +2774,14 @@ void writeCode(Code *code) {
 						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
 						printf("\tsw\t$t0, 0($sp)\n");
 					}
+					
 				} else {
+					
 					printf("\t# pushing parameter %d\n", code->source1->value.intVal);
 					printf("\tsubu\t$sp, $sp, 4\n");
 					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
 					printf("\tsw\t$t0, 0($sp)\n");
+					
 				}
 			}
 			break;

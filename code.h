@@ -48,7 +48,8 @@ typedef enum Opcode {
 	DECLARATION_OP,
 	ARRAY_OP,
 	WHILE_OP,
-	RETURN_OP
+	RETURN_OP,
+	RETRIEVE_OP
 } Opcode;
 
 /* Struct: Code
