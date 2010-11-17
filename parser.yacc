@@ -2679,11 +2679,18 @@ void writeCode(Code *code) {
 			if (code->source1->location) {
 				
 				printf("\t# %s = %s\n", code->destination->identifier, code->source1->identifier);
-
-				if (code->source1->type == CHAR_TYPE)
-					printf("\tlb\t$t0, %s\n", code->source1->location);
-				else
+				
+				if (code->source1->type == CHAR_ARRAY) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlb\t$t0, 0($t0)\n");
+				} else if (code->source1->type == INT_ARRAY) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t$t0, 0($t0)\n");
+				} else if (code->source1->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				}
 					
 			} else {
 				
@@ -2705,10 +2712,18 @@ void writeCode(Code *code) {
 				
 			}
 			
-			if (code->destination->type == CHAR_TYPE)
+			if (code->destination->type == CHAR_ARRAY) {
+				printf("\tlw\t$t1, %s\n", code->destination->location);
+				printf("\tsb\t$t0, 0($t1)\n");	
+			} else if (code->destination->type == INT_ARRAY) {
+				printf("\tlw\t$t1, %s\n", code->destination->location);
+				printf("\tsw\t$t0, 0($t1)\n");
+			} else if (code->destination->type == CHAR_TYPE) {
 				printf("\tsb\t$t0, %s\n", code->destination->location);
-			else
+			} else {
 				printf("\tsw\t$t0, %s\n", code->destination->location);
+			}
+			
 			break;
 		case ENTER:
 			printf("\n");
