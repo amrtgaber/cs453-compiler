@@ -35,7 +35,11 @@ void main(void) {
 	parametersAndLocals('a', 1, charArray1, intArray1);
 	noVariables();
 	
-	x = 1 + 2 + 3;
+	a = 5;
+	int1 = 2;
+	int2 = 3;
+	x = (2*x - x) / a / int1 * int2;
+	printX(x);
 }
 
 void noVariables(void) {
@@ -43,8 +47,8 @@ void noVariables(void) {
 }
 
 void parametersAndLocals(char p1, int p2, char p3[], int p4[]) {
-	int local1, local2;
-	char local3, local4;
+	int local1[2], local2[1];
+	char local3[5], local4[50];
 }
 
 void onlyLocals(void) {

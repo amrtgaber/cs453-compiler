@@ -196,6 +196,8 @@ char *opcodeAsString(Opcode opcode) {
 			return "WHILE";
 		case RETURN_OP:
 			return "RETURN";
+		case RETRIEVE_OP:
+			return "RETRIEVE";
 		default:
 			return "MISSING/UNRECOGNIZED";
 	}
