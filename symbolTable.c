@@ -102,6 +102,7 @@ Symbol *insert(char *identifier, Type type) {
 	toInsert->location = NULL;
 	toInsert->functionType = UNKNOWN;
 	toInsert->parameterListHead = NULL;
+	toInsert->reference = FALSE;
 	
 	toInsert->next = _stack->listHead;
 	_stack->listHead = toInsert;
@@ -140,6 +141,7 @@ Symbol *insertGlobal(char *identifier, Type type) {
 	toInsert->location = NULL;
 	toInsert->functionType = F_UNKNOWN;
 	toInsert->parameterListHead = NULL;
+	toInsert->reference = FALSE;
 	
 	toInsert->next = currTable->listHead;
 	currTable->listHead = toInsert;

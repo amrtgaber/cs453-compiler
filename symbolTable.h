@@ -65,6 +65,7 @@ typedef struct Symbol {
 	char			*location;			// register / stack offset / label
 	FunctionType 	functionType;
 	Parameter 		*parameterListHead;
+	char			reference;
 	struct Symbol 	*next;
 } Symbol;
 
