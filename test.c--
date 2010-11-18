@@ -5,28 +5,92 @@ void printX(int x), printA(int a), make10(int n), make5(int n),
 		takeIntArray(int n[]), takeCharArray(char c[]), onlyLocals(void),
 		onlyParameters(int param1, char param2, int param3[], char param4[]),
 		parametersAndLocals(char p1, int p2, char p3[], int p4[]),
-		noVariables(void);
+		noVariables(void), ps(char string[]), pi(int n), pn(void),
+		scale(int a[], int f);
+	
+int return5(void), index(int a[], int i);
 
-int x, a, int1, int2, int3, int4, intArray1[5], int5, intArray2[10], intArray3[100];
+int x, a, int1, int2, int3, int4, intArray1[4], int5, intArray2[10], intArray3[100];
 char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
 
 void main(void) {
+	int localArray[4], local1, local2;
+	char charString[2];
+	charString[1] = '\0';
+	
+	ps("\nTest Program:\n");
+	
+	ps("\nInitializing local int array...\n");
+	
+	localArray[0] = 5;
+	localArray[1] = 10;
+	localArray[2] = 15;
+	localArray[3] = 20;
+	ps("localArray[0] = ");
+	pi(localArray[0]);
+	pn();
+	ps("localArray[1] = ");
+	pi(localArray[1]);
+	pn();
+	ps("localArray[2] = ");
+	pi(localArray[2]);
+	pn();
+	ps("localArray[3] = ");
+	pi(localArray[3]);
+	pn();
+	
+	ps("\nInitializing global array...\n");
+	
+	intArray1[0] = 1;
+	intArray1[1] = 2;
+	intArray1[2] = 3;
+	intArray1[3] = 4;
+	ps("intArray1[0] = ");
+	pi(intArray1[0]);
+	pn();
+	ps("intArray1[1] = ");
+	pi(intArray1[1]);
+	pn();
+	ps("intArray1[2] = ");
+	pi(intArray1[2]);
+	pn();
+	ps("intArray1[3] = ");
+	pi(intArray1[3]);
+	pn();
+
+	ps("\nInitializing some chars...\n");
+
 	char1 = '#';
+	charString[0] = char1;
+	ps("char1 = ");
+	ps(charString);
+	pn();
+	
 	char2 = '\n';
+	charString[0] = char2;
+	ps("char2 = ");
+	ps(charString);
+	pn();
+	
 	char3 = '\0';
+	charString[0] = char3;
+	ps("char3 = ");
+	ps(charString);
+	pn();
+	
+	ps("\nInitializing some ints...\n");
 	x = 5;
 	printX(x);
+	
 	a = 42;
 	printA(a);
+	
 	x = a;
 	printX(x);
 	printA(a);
 
-	print_int(100);
-	print_string("\n");
-	
-	make10(x);
-	printX(x);
+	pi(100);
+	pn();
 	
 	takeIntArray(intArray3);
 	takeCharArray(charArray2);
@@ -35,11 +99,94 @@ void main(void) {
 	parametersAndLocals('a', 1, charArray1, intArray1);
 	noVariables();
 	
-	a = 5;
-	int1 = 2;
-	int2 = 3;
-	x = (2*x - x) / a / int1 * int2;
+	/* x = -25 */
+	ps("\nNow for an expr...\n");
+	
+	x = 10;
+	a = x / 2;
+	local1 = a / 2;
+	local2 = 3;
+	x = (2*x - x) / a / local1 * local2 - 38 + 10;
 	printX(x);
+	
+	/* x = 5 */
+	ps("\nNow for a function call...\n");
+	
+	x = return5();
+	printX(x);
+	
+	/* x = 120 */
+	ps("\nNow for a double call with simple addition...\n");
+	
+	x = 100 + return5() + return5() + 10;
+	printX(x);
+	
+	ps("\nLet's use functions to modify some arrays...\n");
+	
+	scale(localArray, 2);
+	ps("localArray[0] = ");
+	pi(localArray[0]);
+	pn();
+	ps("localArray[1] = ");
+	pi(localArray[1]);
+	pn();
+	ps("localArray[2] = ");
+	pi(localArray[2]);
+	pn();
+	ps("localArray[3] = ");
+	pi(localArray[3]);
+	pn();
+	
+	scale(intArray1, -1);
+	ps("intArray1[0] = ");
+	pi(intArray1[0]);
+	pn();
+	ps("intArray1[1] = ");
+	pi(intArray1[1]);
+	pn();
+	ps("intArray1[2] = ");
+	pi(intArray1[2]);
+	pn();
+	ps("intArray1[3] = ");
+	pi(intArray1[3]);
+	pn();
+	
+	ps("\nLet's wrap an array indexing operation...\n");
+	/* x = 20 */
+	x = index(localArray, 1);
+	printX(x);
+	
+}
+
+/* print_string wrapper */
+void ps(char string[]) {
+	print_string(string);
+}
+
+/* print_int wrapper */
+void pi(int n) {
+	print_int(n);
+}
+
+/* print newline wrapper */
+void pn(void) {
+	print_string("\n");
+}
+
+int index(int array[], int index) {
+	return array[index];
+}
+
+/* scales only the first 4 values */
+void scale(int array[], int factor) {
+	array[0] = array[0] * factor;
+	array[1] = array[1] * factor;
+	array[2] = array[2] * factor;
+	array[3] = array[3] * factor;
+}
+
+int return5(void) {
+	return 5;
 }
 
 void noVariables(void) {
@@ -68,32 +215,14 @@ void takeCharArray(char c[]) {
 	
 }
 
-void make10(int n) {
-	make5(3);
-	make5(50);
-	print_string("making 10...\n");
-	n = 10;
-	x = 10;
-	return;
-}
-
-void make5(int n) {
-	print_string("making 5...\n");
-	print_string("n = ");
-	print_int(n);
-	print_string("\n");
-	n = 5;
-	x = n;
-}
-
 void printX(int x) {
-	print_string("x = ");
-	print_int(x);
-	print_string("\n");
+	ps("x = ");
+	pi(x);
+	pn();
 }
 
 void printA(int a) {
-	print_string("a = ");
-	print_int(a);
-	print_string("\n");
+	ps("a = ");
+	pi(a);
+	pn();
 }
