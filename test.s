@@ -66,78 +66,34 @@ main:
 	lw	$t1, __temp2
 	sb	$t0, 0($t1)
 
-	# pushing parameter _temp3
-	la	$t0, __temp3
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# calling ps
-	jal	_ps
-
-	# popping pushed parameters
-	addu	$sp, $sp, 4
-
-	# pushing parameter _temp4
-	la	$t0, __temp4
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# calling ps
-	jal	_ps
-
-	# popping pushed parameters
-	addu	$sp, $sp, 4
-
-	# localArray[0]
-	li	$t1, 0
-	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, 12($sp)
-	add	$t0, $t0, $t1
-	sw	$t0, __temp7
-
-	# _temp7 = 5
+	# local1 = 5
 	li	$t0, 5
-	lw	$t1, __temp7
-	sw	$t0, 0($t1)
+	sw	$t0, 8($sp)
 
-	# localArray[1]
-	li	$t1, 1
-	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, 12($sp)
-	add	$t0, $t0, $t1
-	sw	$t0, __temp10
+	# -5
+	li	$t0, 5
+	neg	$t0, $t0
+	sw	$t0, __temp5
 
-	# _temp10 = 10
-	li	$t0, 10
-	lw	$t1, __temp10
-	sw	$t0, 0($t1)
+	# local2 = _temp5
+	lw	$t0, __temp5
+	sw	$t0, 4($sp)
 
-	# localArray[2]
-	li	$t1, 2
-	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, 12($sp)
-	add	$t0, $t0, $t1
-	sw	$t0, __temp13
+	# local1 == local2
+	lw	$t1, 4($sp)
+	lw	$t0, 8($sp)
+	seq	$t0, $t0, $t1
+	sw	$t0, __temp6
 
-	# _temp13 = 15
-	li	$t0, 15
-	lw	$t1, __temp13
-	sw	$t0, 0($t1)
+	lw	$t0, __temp6
+	bgtz	$t0, __label4
 
-	# localArray[3]
-	li	$t1, 3
-	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, 12($sp)
-	add	$t0, $t0, $t1
-	sw	$t0, __temp16
+	j	__label5
 
-	# _temp16 = 20
-	li	$t0, 20
-	lw	$t1, __temp16
-	sw	$t0, 0($t1)
+__label4:
 
-	# pushing parameter _temp17
-	la	$t0, __temp17
+	# pushing parameter _temp7
+	la	$t0, __temp7
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -147,27 +103,86 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# localArray[0]
-	li	$t1, 0
+	j	__label6
+
+__label5:
+
+	# pushing parameter _temp8
+	la	$t0, __temp8
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling ps
+	jal	_ps
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+__label6:
+
+	# pushing parameter _temp9
+	la	$t0, __temp9
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling ps
+	jal	_ps
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	# local1 = 0
+	li	$t0, 0
+	sw	$t0, 8($sp)
+
+	j	__label2
+
+__label3:
+
+	# 1 + local1
+	li	$t0, 1
+	lw	$t1, 8($sp)
+	add	$t0, $t0, $t1
+	sw	$t0, __temp17
+
+	# _temp17 * 5
+	li	$t1, 5
+	lw	$t0, __temp17
+	mul	$t0, $t0, $t1
+	sw	$t0, __temp18
+
+	# localArray[local1]
+	lw	$t1, 8($sp)
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
 	sw	$t0, __temp19
 
-	# pushing parameter _temp19
-	lw	$t0, __temp19
-	lw	$t0, 0($t0)
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
+	# _temp19 = _temp18
+	lw	$t0, __temp18
+	lw	$t1, __temp19
+	sw	$t0, 0($t1)
 
-	# calling pi
-	jal	_pi
+	# 1 + local1
+	li	$t0, 1
+	lw	$t1, 8($sp)
+	add	$t0, $t0, $t1
+	sw	$t0, __temp14
 
-	# popping pushed parameters
-	addu	$sp, $sp, 4
+	# local1 = _temp14
+	lw	$t0, __temp14
+	sw	$t0, 8($sp)
 
-	# calling pn
-	jal	_pn
+__label2:
+
+	# 4 < local1
+	li	$t0, 4
+	lw	$t1, 8($sp)
+	slt	$t0, $t1, $t0
+	sw	$t0, __temp12
+
+	lw	$t0, __temp12
+	bgtz	$t0, __label3
 
 	# pushing parameter _temp20
 	la	$t0, __temp20
@@ -180,8 +195,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# localArray[1]
-	li	$t1, 1
+	# localArray[0]
+	li	$t1, 0
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
@@ -213,8 +228,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# localArray[2]
-	li	$t1, 2
+	# localArray[1]
+	li	$t1, 1
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
@@ -246,8 +261,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# localArray[3]
-	li	$t1, 3
+	# localArray[2]
+	li	$t1, 2
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
@@ -279,56 +294,88 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# intArray1[0]
-	li	$t1, 0
+	# localArray[3]
+	li	$t1, 3
 	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, _intArray1
+	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp32
+	sw	$t0, __temp31
 
-	# _temp32 = 1
+	# pushing parameter _temp31
+	lw	$t0, __temp31
+	lw	$t0, 0($t0)
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling pi
+	jal	_pi
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	# calling pn
+	jal	_pn
+
+	# pushing parameter _temp32
+	la	$t0, __temp32
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling ps
+	jal	_ps
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	# local1 = 3
+	li	$t0, 3
+	sw	$t0, 8($sp)
+
+	j	__label0
+
+__label1:
+
+	# 1 + local1
 	li	$t0, 1
-	lw	$t1, __temp32
-	sw	$t0, 0($t1)
-
-	# intArray1[1]
-	li	$t1, 1
-	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, _intArray1
+	lw	$t1, 8($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp35
+	sw	$t0, __temp37
 
-	# _temp35 = 2
-	li	$t0, 2
-	lw	$t1, __temp35
-	sw	$t0, 0($t1)
-
-	# intArray1[2]
-	li	$t1, 2
+	# intArray1[local1]
+	lw	$t1, 8($sp)
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
 	sw	$t0, __temp38
 
-	# _temp38 = 3
-	li	$t0, 3
+	# _temp38 = _temp37
+	lw	$t0, __temp37
 	lw	$t1, __temp38
 	sw	$t0, 0($t1)
 
-	# intArray1[3]
-	li	$t1, 3
-	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, _intArray1
-	add	$t0, $t0, $t1
-	sw	$t0, __temp41
+	# local1 - 1
+	li	$t0, 1
+	lw	$t1, 8($sp)
+	sub	$t0, $t1, $t0
+	sw	$t0, __temp40
 
-	# _temp41 = 4
-	li	$t0, 4
-	lw	$t1, __temp41
-	sw	$t0, 0($t1)
+	# local1 = _temp40
+	lw	$t0, __temp40
+	sw	$t0, 8($sp)
 
-	# pushing parameter _temp42
-	la	$t0, __temp42
+__label0:
+
+	# 0 >= local1
+	li	$t0, 0
+	lw	$t1, 8($sp)
+	sge	$t0, $t1, $t0
+	sw	$t0, __temp35
+
+	lw	$t0, __temp35
+	bgtz	$t0, __label1
+
+	# pushing parameter _temp41
+	la	$t0, __temp41
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -343,10 +390,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp44
+	sw	$t0, __temp43
 
-	# pushing parameter _temp44
-	lw	$t0, __temp44
+	# pushing parameter _temp43
+	lw	$t0, __temp43
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -360,8 +407,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp45
-	la	$t0, __temp45
+	# pushing parameter _temp44
+	la	$t0, __temp44
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -376,10 +423,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp47
+	sw	$t0, __temp46
 
-	# pushing parameter _temp47
-	lw	$t0, __temp47
+	# pushing parameter _temp46
+	lw	$t0, __temp46
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -393,8 +440,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp48
-	la	$t0, __temp48
+	# pushing parameter _temp47
+	la	$t0, __temp47
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -409,10 +456,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp50
+	sw	$t0, __temp49
 
-	# pushing parameter _temp50
-	lw	$t0, __temp50
+	# pushing parameter _temp49
+	lw	$t0, __temp49
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -426,8 +473,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp51
-	la	$t0, __temp51
+	# pushing parameter _temp50
+	la	$t0, __temp50
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -442,10 +489,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp53
+	sw	$t0, __temp52
 
-	# pushing parameter _temp53
-	lw	$t0, __temp53
+	# pushing parameter _temp52
+	lw	$t0, __temp52
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -459,8 +506,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp54
-	la	$t0, __temp54
+	# pushing parameter _temp53
+	la	$t0, __temp53
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -478,15 +525,15 @@ main:
 	li	$t1, 0
 	la	$t0, 0($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp57
+	sw	$t0, __temp56
 
-	# _temp57 = char1
+	# _temp56 = char1
 	lb	$t0, _char1
-	lw	$t1, __temp57
+	lw	$t1, __temp56
 	sb	$t0, 0($t1)
 
-	# pushing parameter _temp58
-	la	$t0, __temp58
+	# pushing parameter _temp57
+	la	$t0, __temp57
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -518,15 +565,15 @@ main:
 	li	$t1, 0
 	la	$t0, 0($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp61
+	sw	$t0, __temp60
 
-	# _temp61 = char2
+	# _temp60 = char2
 	lb	$t0, _char2
-	lw	$t1, __temp61
+	lw	$t1, __temp60
 	sb	$t0, 0($t1)
 
-	# pushing parameter _temp62
-	la	$t0, __temp62
+	# pushing parameter _temp61
+	la	$t0, __temp61
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -558,15 +605,15 @@ main:
 	li	$t1, 0
 	la	$t0, 0($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp65
+	sw	$t0, __temp64
 
-	# _temp65 = char3
+	# _temp64 = char3
 	lb	$t0, _char3
-	lw	$t1, __temp65
+	lw	$t1, __temp64
 	sb	$t0, 0($t1)
 
-	# pushing parameter _temp66
-	la	$t0, __temp66
+	# pushing parameter _temp65
+	la	$t0, __temp65
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -590,8 +637,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp67
-	la	$t0, __temp67
+	# pushing parameter _temp66
+	la	$t0, __temp66
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -751,8 +798,8 @@ main:
 	# calling noVariables
 	jal	_noVariables
 
-	# pushing parameter _temp73
-	la	$t0, __temp73
+	# pushing parameter _temp72
+	la	$t0, __temp72
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -770,20 +817,20 @@ main:
 	li	$t0, 2
 	lw	$t1, _x
 	div	$t0, $t1, $t0
-	sw	$t0, __temp76
+	sw	$t0, __temp75
 
-	# a = _temp76
-	lw	$t0, __temp76
+	# a = _temp75
+	lw	$t0, __temp75
 	sw	$t0, _a
 
 	# a / 2
 	li	$t0, 2
 	lw	$t1, _a
 	div	$t0, $t1, $t0
-	sw	$t0, __temp78
+	sw	$t0, __temp77
 
-	# local1 = _temp78
-	lw	$t0, __temp78
+	# local1 = _temp77
+	lw	$t0, __temp77
 	sw	$t0, 8($sp)
 
 	# local2 = 3
@@ -794,46 +841,46 @@ main:
 	li	$t1, 2
 	lw	$t0, _x
 	mul	$t0, $t0, $t1
-	sw	$t0, __temp81
+	sw	$t0, __temp80
 
-	# _temp81 - x
-	lw	$t1, __temp81
+	# _temp80 - x
+	lw	$t1, __temp80
 	lw	$t0, _x
 	sub	$t0, $t1, $t0
+	sw	$t0, __temp81
+
+	# _temp81 / a
+	lw	$t1, __temp81
+	lw	$t0, _a
+	div	$t0, $t1, $t0
 	sw	$t0, __temp82
 
-	# _temp82 / a
+	# _temp82 / local1
 	lw	$t1, __temp82
-	lw	$t0, _a
+	lw	$t0, 8($sp)
 	div	$t0, $t1, $t0
 	sw	$t0, __temp83
 
-	# _temp83 / local1
+	# local2 * _temp83
 	lw	$t1, __temp83
-	lw	$t0, 8($sp)
-	div	$t0, $t1, $t0
-	sw	$t0, __temp84
-
-	# local2 * _temp84
-	lw	$t1, __temp84
 	lw	$t0, 4($sp)
 	mul	$t0, $t0, $t1
-	sw	$t0, __temp85
+	sw	$t0, __temp84
 
-	# _temp85 - 38
+	# _temp84 - 38
 	li	$t0, 38
-	lw	$t1, __temp85
+	lw	$t1, __temp84
 	sub	$t0, $t1, $t0
-	sw	$t0, __temp87
+	sw	$t0, __temp86
 
-	# 10 + _temp87
+	# 10 + _temp86
 	li	$t0, 10
-	lw	$t1, __temp87
+	lw	$t1, __temp86
 	add	$t0, $t0, $t1
-	sw	$t0, __temp89
+	sw	$t0, __temp88
 
-	# x = _temp89
-	lw	$t0, __temp89
+	# x = _temp88
+	lw	$t0, __temp88
 	sw	$t0, _x
 
 	# pushing parameter x
@@ -847,8 +894,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# pushing parameter _temp90
-	la	$t0, __temp90
+	# pushing parameter _temp89
+	la	$t0, __temp89
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -862,10 +909,10 @@ main:
 	jal	_return5
 
 	# retrieve return value from return5
-	sw	$v0, __temp91
+	sw	$v0, __temp90
 
-	# x = _temp91
-	lw	$t0, __temp91
+	# x = _temp90
+	lw	$t0, __temp90
 	sw	$t0, _x
 
 	# pushing parameter x
@@ -879,8 +926,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# pushing parameter _temp92
-	la	$t0, __temp92
+	# pushing parameter _temp91
+	la	$t0, __temp91
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -894,34 +941,34 @@ main:
 	jal	_return5
 
 	# retrieve return value from return5
-	sw	$v0, __temp94
+	sw	$v0, __temp93
 
-	# _temp94 + 100
+	# _temp93 + 100
 	li	$t1, 100
-	lw	$t0, __temp94
+	lw	$t0, __temp93
 	add	$t0, $t0, $t1
-	sw	$t0, __temp95
+	sw	$t0, __temp94
 
 	# calling return5
 	jal	_return5
 
 	# retrieve return value from return5
-	sw	$v0, __temp96
+	sw	$v0, __temp95
 
-	# _temp96 + _temp95
-	lw	$t1, __temp95
-	lw	$t0, __temp96
+	# _temp95 + _temp94
+	lw	$t1, __temp94
+	lw	$t0, __temp95
 	add	$t0, $t0, $t1
-	sw	$t0, __temp97
+	sw	$t0, __temp96
 
-	# 10 + _temp97
+	# 10 + _temp96
 	li	$t0, 10
-	lw	$t1, __temp97
+	lw	$t1, __temp96
 	add	$t0, $t0, $t1
-	sw	$t0, __temp99
+	sw	$t0, __temp98
 
-	# x = _temp99
-	lw	$t0, __temp99
+	# x = _temp98
+	lw	$t0, __temp98
 	sw	$t0, _x
 
 	# pushing parameter x
@@ -935,8 +982,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# pushing parameter _temp100
-	la	$t0, __temp100
+	# pushing parameter _temp99
+	la	$t0, __temp99
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -962,8 +1009,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 8
 
-	# pushing parameter _temp17
-	la	$t0, __temp17
+	# pushing parameter _temp20
+	la	$t0, __temp20
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -978,43 +1025,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp103
+	sw	$t0, __temp102
 
-	# pushing parameter _temp103
-	lw	$t0, __temp103
-	lw	$t0, 0($t0)
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# calling pi
-	jal	_pi
-
-	# popping pushed parameters
-	addu	$sp, $sp, 4
-
-	# calling pn
-	jal	_pn
-
-	# pushing parameter _temp20
-	la	$t0, __temp20
-	subu	$sp, $sp, 4
-	sw	$t0, 0($sp)
-
-	# calling ps
-	jal	_ps
-
-	# popping pushed parameters
-	addu	$sp, $sp, 4
-
-	# localArray[1]
-	li	$t1, 1
-	sll	$t1, $t1, 2		# index * 4 (size of int)
-	la	$t0, 12($sp)
-	add	$t0, $t0, $t1
-	sw	$t0, __temp105
-
-	# pushing parameter _temp105
-	lw	$t0, __temp105
+	# pushing parameter _temp102
+	lw	$t0, __temp102
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -1039,15 +1053,15 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-	# localArray[2]
-	li	$t1, 2
+	# localArray[1]
+	li	$t1, 1
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp107
+	sw	$t0, __temp104
 
-	# pushing parameter _temp107
-	lw	$t0, __temp107
+	# pushing parameter _temp104
+	lw	$t0, __temp104
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -1072,15 +1086,48 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
+	# localArray[2]
+	li	$t1, 2
+	sll	$t1, $t1, 2		# index * 4 (size of int)
+	la	$t0, 12($sp)
+	add	$t0, $t0, $t1
+	sw	$t0, __temp106
+
+	# pushing parameter _temp106
+	lw	$t0, __temp106
+	lw	$t0, 0($t0)
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling pi
+	jal	_pi
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
+	# calling pn
+	jal	_pn
+
+	# pushing parameter _temp29
+	la	$t0, __temp29
+	subu	$sp, $sp, 4
+	sw	$t0, 0($sp)
+
+	# calling ps
+	jal	_ps
+
+	# popping pushed parameters
+	addu	$sp, $sp, 4
+
 	# localArray[3]
 	li	$t1, 3
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, 12($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp109
+	sw	$t0, __temp108
 
-	# pushing parameter _temp109
-	lw	$t0, __temp109
+	# pushing parameter _temp108
+	lw	$t0, __temp108
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -1097,10 +1144,10 @@ main:
 	# -1
 	li	$t0, 1
 	neg	$t0, $t0
-	sw	$t0, __temp111
+	sw	$t0, __temp110
 
-	# pushing parameter _temp111
-	lw	$t0, __temp111
+	# pushing parameter _temp110
+	lw	$t0, __temp110
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1115,8 +1162,8 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 8
 
-	# pushing parameter _temp42
-	la	$t0, __temp42
+	# pushing parameter _temp41
+	la	$t0, __temp41
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1131,10 +1178,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp113
+	sw	$t0, __temp112
 
-	# pushing parameter _temp113
-	lw	$t0, __temp113
+	# pushing parameter _temp112
+	lw	$t0, __temp112
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -1148,8 +1195,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp45
-	la	$t0, __temp45
+	# pushing parameter _temp44
+	la	$t0, __temp44
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1164,10 +1211,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp115
+	sw	$t0, __temp114
 
-	# pushing parameter _temp115
-	lw	$t0, __temp115
+	# pushing parameter _temp114
+	lw	$t0, __temp114
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -1181,8 +1228,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp48
-	la	$t0, __temp48
+	# pushing parameter _temp47
+	la	$t0, __temp47
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1197,10 +1244,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp117
+	sw	$t0, __temp116
 
-	# pushing parameter _temp117
-	lw	$t0, __temp117
+	# pushing parameter _temp116
+	lw	$t0, __temp116
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -1214,8 +1261,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp51
-	la	$t0, __temp51
+	# pushing parameter _temp50
+	la	$t0, __temp50
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1230,10 +1277,10 @@ main:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	la	$t0, _intArray1
 	add	$t0, $t0, $t1
-	sw	$t0, __temp119
+	sw	$t0, __temp118
 
-	# pushing parameter _temp119
-	lw	$t0, __temp119
+	# pushing parameter _temp118
+	lw	$t0, __temp118
 	lw	$t0, 0($t0)
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
@@ -1247,8 +1294,8 @@ main:
 	# calling pn
 	jal	_pn
 
-	# pushing parameter _temp120
-	la	$t0, __temp120
+	# pushing parameter _temp119
+	la	$t0, __temp119
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1275,10 +1322,10 @@ main:
 	addu	$sp, $sp, 8
 
 	# retrieve return value from index
-	sw	$v0, __temp122
+	sw	$v0, __temp121
 
-	# x = _temp122
-	lw	$t0, __temp122
+	# x = _temp121
+	lw	$t0, __temp121
 	sw	$t0, _x
 
 	# pushing parameter x
@@ -1292,7 +1339,7 @@ main:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-_mainReturn:
+__mainReturn:
 	lw	$fp, 28($sp)
 	lw	$ra, 32($sp)
 	addu	$sp, $sp, 36
@@ -1319,7 +1366,7 @@ _ps:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-_psReturn:
+__psReturn:
 	lw	$fp, 4($sp)
 	lw	$ra, 8($sp)
 	addu	$sp, $sp, 12
@@ -1346,7 +1393,7 @@ _pi:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-_piReturn:
+__piReturn:
 	lw	$fp, 4($sp)
 	lw	$ra, 8($sp)
 	addu	$sp, $sp, 12
@@ -1360,8 +1407,8 @@ _pn:
 	sw	$fp, 0($sp)
 	addu	$fp, $sp, 8
 
-	# pushing parameter _temp123
-	la	$t0, __temp123
+	# pushing parameter _temp122
+	la	$t0, __temp122
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1371,7 +1418,7 @@ _pn:
 	# popping pushed parameters
 	addu	$sp, $sp, 4
 
-_pnReturn:
+__pnReturn:
 	lw	$fp, 0($sp)
 	lw	$ra, 4($sp)
 	addu	$sp, $sp, 8
@@ -1394,15 +1441,15 @@ _index:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp124
+	sw	$t0, __temp123
 
-	# return _temp124
-	lw	$t0, __temp124
+	# return _temp123
+	lw	$t0, __temp123
 	lw	$t0, 0($t0)
 	add	$v0, $t0, $0
-	j	_indexReturn
+	j	__indexReturn
 
-_indexReturn:
+__indexReturn:
 	lw	$fp, 8($sp)
 	lw	$ra, 12($sp)
 	addu	$sp, $sp, 16
@@ -1425,25 +1472,25 @@ _scale:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp127
+	sw	$t0, __temp126
 
-	# factor * _temp127
-	lw	$t1, __temp127
+	# factor * _temp126
+	lw	$t1, __temp126
 	lw	$t1, 0($t0)
 	lw	$t0, 0($sp)
 	mul	$t0, $t0, $t1
-	sw	$t0, __temp128
+	sw	$t0, __temp127
 
 	# array[0]
 	li	$t1, 0
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp129
+	sw	$t0, __temp128
 
-	# _temp129 = _temp128
-	lw	$t0, __temp128
-	lw	$t1, __temp129
+	# _temp128 = _temp127
+	lw	$t0, __temp127
+	lw	$t1, __temp128
 	sw	$t0, 0($t1)
 
 	# array[1]
@@ -1451,25 +1498,25 @@ _scale:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
+	sw	$t0, __temp131
+
+	# factor * _temp131
+	lw	$t1, __temp131
+	lw	$t1, 0($t0)
+	lw	$t0, 0($sp)
+	mul	$t0, $t0, $t1
 	sw	$t0, __temp132
 
-	# factor * _temp132
-	lw	$t1, __temp132
-	lw	$t1, 0($t0)
-	lw	$t0, 0($sp)
-	mul	$t0, $t0, $t1
-	sw	$t0, __temp133
-
 	# array[1]
 	li	$t1, 1
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp134
+	sw	$t0, __temp133
 
-	# _temp134 = _temp133
-	lw	$t0, __temp133
-	lw	$t1, __temp134
+	# _temp133 = _temp132
+	lw	$t0, __temp132
+	lw	$t1, __temp133
 	sw	$t0, 0($t1)
 
 	# array[2]
@@ -1477,25 +1524,25 @@ _scale:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
+	sw	$t0, __temp136
+
+	# factor * _temp136
+	lw	$t1, __temp136
+	lw	$t1, 0($t0)
+	lw	$t0, 0($sp)
+	mul	$t0, $t0, $t1
 	sw	$t0, __temp137
 
-	# factor * _temp137
-	lw	$t1, __temp137
-	lw	$t1, 0($t0)
-	lw	$t0, 0($sp)
-	mul	$t0, $t0, $t1
-	sw	$t0, __temp138
-
 	# array[2]
 	li	$t1, 2
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp139
+	sw	$t0, __temp138
 
-	# _temp139 = _temp138
-	lw	$t0, __temp138
-	lw	$t1, __temp139
+	# _temp138 = _temp137
+	lw	$t0, __temp137
+	lw	$t1, __temp138
 	sw	$t0, 0($t1)
 
 	# array[3]
@@ -1503,28 +1550,28 @@ _scale:
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp142
+	sw	$t0, __temp141
 
-	# factor * _temp142
-	lw	$t1, __temp142
+	# factor * _temp141
+	lw	$t1, __temp141
 	lw	$t1, 0($t0)
 	lw	$t0, 0($sp)
 	mul	$t0, $t0, $t1
-	sw	$t0, __temp143
+	sw	$t0, __temp142
 
 	# array[3]
 	li	$t1, 3
 	sll	$t1, $t1, 2		# index * 4 (size of int)
 	lw	$t0, 4($sp)
 	add	$t0, $t0, $t1
-	sw	$t0, __temp144
+	sw	$t0, __temp143
 
-	# _temp144 = _temp143
-	lw	$t0, __temp143
-	lw	$t1, __temp144
+	# _temp143 = _temp142
+	lw	$t0, __temp142
+	lw	$t1, __temp143
 	sw	$t0, 0($t1)
 
-_scaleReturn:
+__scaleReturn:
 	lw	$fp, 8($sp)
 	lw	$ra, 12($sp)
 	addu	$sp, $sp, 16
@@ -1541,9 +1588,9 @@ _return5:
 	# return 5
 	li	$t0, 5
 	add	$v0, $t0, $0
-	j	_return5Return
+	j	__return5Return
 
-_return5Return:
+__return5Return:
 	lw	$fp, 0($sp)
 	lw	$ra, 4($sp)
 	addu	$sp, $sp, 8
@@ -1557,7 +1604,7 @@ _noVariables:
 	sw	$fp, 0($sp)
 	addu	$fp, $sp, 8
 
-_noVariablesReturn:
+__noVariablesReturn:
 	lw	$fp, 0($sp)
 	lw	$ra, 4($sp)
 	addu	$sp, $sp, 8
@@ -1598,7 +1645,7 @@ _parametersAndLocals:
 	sw	$0, 4($sp)
 	sw	$0, 0($sp)
 
-_parametersAndLocalsReturn:
+__parametersAndLocalsReturn:
 	lw	$fp, 88($sp)
 	lw	$ra, 92($sp)
 	addu	$sp, $sp, 96
@@ -1617,7 +1664,7 @@ _onlyLocals:
 	sw	$0, 4($sp)
 	sw	$0, 0($sp)
 
-_onlyLocalsReturn:
+__onlyLocalsReturn:
 	lw	$fp, 16($sp)
 	lw	$ra, 20($sp)
 	addu	$sp, $sp, 24
@@ -1639,7 +1686,7 @@ _onlyParameters:
 	lw	$t0, 12($fp)		# storing parameter param4
 	sw	$t0, 0($sp)
 
-_onlyParametersReturn:
+__onlyParametersReturn:
 	lw	$fp, 16($sp)
 	lw	$ra, 20($sp)
 	addu	$sp, $sp, 24
@@ -1656,9 +1703,9 @@ _takeIntArray:
 	sw	$t0, 0($sp)
 
 	# return
-	j	_takeIntArrayReturn
+	j	__takeIntArrayReturn
 
-_takeIntArrayReturn:
+__takeIntArrayReturn:
 	lw	$fp, 4($sp)
 	lw	$ra, 8($sp)
 	addu	$sp, $sp, 12
@@ -1674,7 +1721,7 @@ _takeCharArray:
 	lw	$t0, 0($fp)		# storing parameter c
 	sw	$t0, 0($sp)
 
-_takeCharArrayReturn:
+__takeCharArrayReturn:
 	lw	$fp, 4($sp)
 	lw	$ra, 8($sp)
 	addu	$sp, $sp, 12
@@ -1690,8 +1737,8 @@ _printX:
 	lw	$t0, 0($fp)		# storing parameter x
 	sw	$t0, 0($sp)
 
-	# pushing parameter _temp146
-	la	$t0, __temp146
+	# pushing parameter _temp145
+	la	$t0, __temp145
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1715,7 +1762,7 @@ _printX:
 	# calling pn
 	jal	_pn
 
-_printXReturn:
+__printXReturn:
 	lw	$fp, 4($sp)
 	lw	$ra, 8($sp)
 	addu	$sp, $sp, 12
@@ -1731,8 +1778,8 @@ _printA:
 	lw	$t0, 0($fp)		# storing parameter a
 	sw	$t0, 0($sp)
 
-	# pushing parameter _temp147
-	la	$t0, __temp147
+	# pushing parameter _temp146
+	la	$t0, __temp146
 	subu	$sp, $sp, 4
 	sw	$t0, 0($sp)
 
@@ -1756,7 +1803,7 @@ _printA:
 	# calling pn
 	jal	_pn
 
-_printAReturn:
+__printAReturn:
 	lw	$fp, 4($sp)
 	lw	$ra, 8($sp)
 	addu	$sp, $sp, 12
@@ -1764,16 +1811,13 @@ _printAReturn:
 
 .data
 
-__temp144:
-	.word 0
-
 __temp143:
 	.word 0
 
 __temp142:
 	.word 0
 
-__temp139:
+__temp141:
 	.word 0
 
 __temp138:
@@ -1782,7 +1826,7 @@ __temp138:
 __temp137:
 	.word 0
 
-__temp134:
+__temp136:
 	.word 0
 
 __temp133:
@@ -1791,7 +1835,7 @@ __temp133:
 __temp132:
 	.word 0
 
-__temp129:
+__temp131:
 	.word 0
 
 __temp128:
@@ -1800,43 +1844,43 @@ __temp128:
 __temp127:
 	.word 0
 
-__temp124:
+__temp126:
 	.word 0
 
-__temp122:
+__temp123:
 	.word 0
 
-__temp119:
+__temp121:
 	.word 0
 
-__temp117:
+__temp118:
 	.word 0
 
-__temp115:
+__temp116:
 	.word 0
 
-__temp113:
+__temp114:
 	.word 0
 
-__temp111:
+__temp112:
 	.word 0
 
-__temp109:
+__temp110:
 	.word 0
 
-__temp107:
+__temp108:
 	.word 0
 
-__temp105:
+__temp106:
 	.word 0
 
-__temp103:
+__temp104:
 	.word 0
 
-__temp99:
+__temp102:
 	.word 0
 
-__temp97:
+__temp98:
 	.word 0
 
 __temp96:
@@ -1848,16 +1892,16 @@ __temp95:
 __temp94:
 	.word 0
 
-__temp91:
+__temp93:
 	.word 0
 
-__temp89:
+__temp90:
 	.word 0
 
-__temp87:
+__temp88:
 	.word 0
 
-__temp85:
+__temp86:
 	.word 0
 
 __temp84:
@@ -1872,43 +1916,49 @@ __temp82:
 __temp81:
 	.word 0
 
-__temp78:
+__temp80:
 	.word 0
 
-__temp76:
+__temp77:
 	.word 0
 
-__temp65:
+__temp75:
 	.word 0
 
-__temp61:
+__temp64:
 	.word 0
 
-__temp57:
+__temp60:
 	.word 0
 
-__temp53:
+__temp56:
 	.word 0
 
-__temp50:
+__temp52:
 	.word 0
 
-__temp47:
+__temp49:
 	.word 0
 
-__temp44:
+__temp46:
 	.word 0
 
-__temp41:
+__temp43:
+	.word 0
+
+__temp40:
 	.word 0
 
 __temp38:
 	.word 0
 
+__temp37:
+	.word 0
+
 __temp35:
 	.word 0
 
-__temp32:
+__temp31:
 	.word 0
 
 __temp28:
@@ -1923,91 +1973,100 @@ __temp22:
 __temp19:
 	.word 0
 
-__temp16:
+__temp18:
 	.word 0
 
-__temp13:
+__temp17:
 	.word 0
 
-__temp10:
+__temp14:
 	.word 0
 
-__temp7:
+__temp12:
+	.word 0
+
+__temp6:
+	.word 0
+
+__temp5:
 	.word 0
 
 __temp2:
 	.word 0
 
-__temp147:
+__temp146:
 	.asciiz	"a = "
 
-__temp146:
+__temp145:
 	.asciiz	"x = "
 
-__temp123:
+__temp122:
 	.asciiz	"\n"
 
-__temp120:
+__temp119:
 	.asciiz	"\nLet's wrap an array indexing operation...\n"
 
-__temp100:
+__temp99:
 	.asciiz	"\nLet's use functions to modify some arrays...\n"
 
-__temp92:
+__temp91:
 	.asciiz	"\nNow for a double call with simple addition...\n"
 
-__temp90:
+__temp89:
 	.asciiz	"\nNow for a function call...\n"
 
-__temp73:
+__temp72:
 	.asciiz	"\nNow for an expr...\n"
 
-__temp67:
+__temp66:
 	.asciiz	"\nInitializing some ints...\n"
 
-__temp66:
+__temp65:
 	.asciiz	"char3 = "
 
-__temp62:
+__temp61:
 	.asciiz	"char2 = "
 
-__temp58:
+__temp57:
 	.asciiz	"char1 = "
 
-__temp54:
+__temp53:
 	.asciiz	"\nInitializing some chars...\n"
 
-__temp51:
+__temp50:
 	.asciiz	"intArray1[3] = "
 
-__temp48:
+__temp47:
 	.asciiz	"intArray1[2] = "
 
-__temp45:
+__temp44:
 	.asciiz	"intArray1[1] = "
 
-__temp42:
+__temp41:
 	.asciiz	"intArray1[0] = "
 
-__temp29:
+__temp32:
 	.asciiz	"\nInitializing global array...\n"
 
-__temp26:
+__temp29:
 	.asciiz	"localArray[3] = "
 
-__temp23:
+__temp26:
 	.asciiz	"localArray[2] = "
 
-__temp20:
+__temp23:
 	.asciiz	"localArray[1] = "
 
-__temp17:
+__temp20:
 	.asciiz	"localArray[0] = "
 
-__temp4:
+__temp9:
 	.asciiz	"\nInitializing local int array...\n"
 
-__temp3:
+__temp8:
+	.asciiz	"\nTEST PROGRAM:\n"
+
+__temp7:
 	.asciiz	"\nTest Program:\n"
 
 .text
