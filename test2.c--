@@ -1,0 +1,38 @@
+extern void print_int(int n);
+extern void print_string(char s[]);
+
+/* print_string wrapper */
+void ps(char string[]) {
+	print_string(string);
+}
+
+/* print_int wrapper */
+void pi(int n) {
+	print_int(n);
+}
+
+/* print newline wrapper */
+void pn(void) {
+	print_string("\n");
+}
+
+int factorial(int n) {
+	if (n <= 1)
+		return 1;
+	
+	return n * factorial(n - 1);
+}
+
+void main(void) {
+	int n, result;
+	
+	n = 6;
+	
+	result = factorial(n);
+	
+	ps("Factorial of ");
+	pi(n);
+	ps(" is ");
+	pi(result);
+	pn();
+}
