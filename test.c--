@@ -18,14 +18,24 @@ void main(void) {
 	char charString[2];
 	charString[1] = '\0';
 	
-	ps("\nTest Program:\n");
+	local1 = 5;
+	local2 = -5;
+	
+	if (local2 == local1) {
+		ps("\nTest Program:\n");
+	} else {
+		ps("\nTEST PROGRAM:\n");
+	}
 	
 	ps("\nInitializing local int array...\n");
 	
-	localArray[0] = 5;
+	for(local1 = 0; local1 < 4; local1 = local1 + 1) {
+		localArray[local1] = 5 * (local1 + 1);
+	}
+/*	localArray[0] = 5;
 	localArray[1] = 10;
 	localArray[2] = 15;
-	localArray[3] = 20;
+	localArray[3] = 20;*/
 	ps("localArray[0] = ");
 	pi(localArray[0]);
 	pn();
@@ -41,10 +51,15 @@ void main(void) {
 	
 	ps("\nInitializing global array...\n");
 	
-	intArray1[0] = 1;
+	local1 = 3;
+	while (local1 >= 0) {
+		intArray1[local1] = local1 + 1;
+		local1 = local1 - 1;
+	}
+/*	intArray1[0] = 1;
 	intArray1[1] = 2;
 	intArray1[2] = 3;
-	intArray1[3] = 4;
+	intArray1[3] = 4;*/
 	ps("intArray1[0] = ");
 	pi(intArray1[0]);
 	pn();
@@ -151,8 +166,9 @@ void main(void) {
 	pi(intArray1[3]);
 	pn();
 	
-	ps("\nLet's wrap an array indexing operation...\n");
 	/* x = 20 */
+	ps("\nLet's wrap an array indexing operation...\n");
+
 	x = index(localArray, 1);
 	printX(x);
 	

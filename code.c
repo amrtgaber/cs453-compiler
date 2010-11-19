@@ -168,20 +168,12 @@ char *opcodeAsString(Opcode opcode) {
 			return "||";
 		case ASSIGNMENT_OP:
 			return "=";
-		case BRANCH_EQUAL:
-			return "BRANCH ==";
-		case BRANCH_NOT_EQUAL:
-			return "BRANCH !=";
-		case BRANCH_LESS:
-			return "BRANCH <";
-		case BRANCH_LESS_EQUAL:
-			return "BRANCH <=";
-		case BRANCH_GREATER:
-			return "BRANCH >";
-		case BRANCH_GREATER_EQUAL:
-			return "BRANCH >=";
+		case BRANCH:
+			return "BRANCH";
 		case JUMP:
 			return "JUMP";
+		case LABEL:
+			return "LABEL";
 		case ENTER:
 			return "ENTER";
 		case LEAVE:

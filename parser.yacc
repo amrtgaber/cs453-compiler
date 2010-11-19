@@ -87,12 +87,12 @@ TempVariable *_tempVariables = NULL;
 			UMINUS DBLEQ NOTEQ LTEQ GTEQ LOGICAND LOGICOR OTHER
 
 %type	<character>		CHARCON
-%type	<integer>		exprOpt INTCON
+%type	<integer>		INTCON
 %type 	<string>		ID storeID STRCON
 %type 	<tree>			assignment statement statementOpt paramTypes arrayTypeOpt
 							args varDcl multiVarDcl multiParam multiExprOpt
-							multiTypeDcl
-%type	<exprReturn>	expr multiFuncOpt
+							multiTypeDcl assgOpt
+%type	<exprReturn>	expr multiFuncOpt exprOpt
 
 %left LOGICOR
 %left LOGICAND
@@ -494,7 +494,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			      printCode(code);
 			  #endif
 
-			  printf("\n_%sReturn:\n", _currFID);
+			  printf("\n__%sReturn:\n", _currFID);
 			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\tlw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
@@ -597,7 +597,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			      printCode(code);
 			  #endif
 			
-			  printf("\n_%sReturn:\n", _currFID);
+			  printf("\n__%sReturn:\n", _currFID);
 			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\tlw\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
@@ -635,21 +635,32 @@ statement:	  IF '(' expr ')' statement
 			{
 			  if ($3.type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
+			  
+			  $$ = createTree(IF_TREE, NULL, $3.tree, $5);
 			}
 			| IF '(' expr ')' statement ELSE statement
 			{
 			  if ($3.type != BOOLEAN)
 				  typeError("conditional in if statement must be a boolean");
+				
+				$$ = createTree(IF_TREE, NULL, $3.tree, $5);
+				$$->opt = $7;
 			}
 			| WHILE '(' expr ')' statement
 			{
 			  if ($3.type != BOOLEAN)
 				  typeError("conditional in while loop must be a boolean");
+				
+			  $$ = createTree(WHILE_TREE, NULL, $3.tree, $5);
 			}
 			| FOR '(' assgOpt ';' exprOpt ';' assgOpt ')' statement
 			{
-			  if ($5 != BOOLEAN)
+			  if ($5.type != BOOLEAN)
 				  typeError("conditional in for loop must be a boolean");
+				
+			SyntaxTree *tree = createTree(WHILE_TREE, NULL, $5.tree, $9);
+			tree->opt = $7;
+			$$ = createTree(STATEMENT, NULL, tree, $3);
 			}
 			| RETURN expr ';'
 			{
@@ -786,8 +797,8 @@ statementOpt: statementOpt statement
 			| /* empty */ { $$ = NULL; }
 			;
 
-exprOpt:	  expr { $$ = $1.type; }
-			| /* empty */ { $$ = BOOLEAN; }
+exprOpt:	  expr { $$.type = $1.type; $$.tree = $1.tree; }
+			| /* empty */ { $$.type = BOOLEAN; $$.tree = NULL; }
 			;
 
 assignment:	  storeID '=' expr
@@ -857,8 +868,8 @@ assignment:	  storeID '=' expr
 			}
 			;
 
-assgOpt:	  assignment
-			| /* empty */
+assgOpt:	  assignment { $$ = $1; }
+			| /* empty */ { $$ = NULL; }
 			;
 
 expr:		  '-' expr %prec UMINUS
@@ -1581,6 +1592,7 @@ Code *constructCode(SyntaxTree *tree) {
 	
 	constructCode(tree->left);
 	constructCode(tree->right);
+	constructCode(tree->opt);
 	
 	Code *code = NULL;
 	
@@ -2057,10 +2069,86 @@ Code *constructCode(SyntaxTree *tree) {
 			}
 			
 			break;
-		/*case IF_TREE:
+		case IF_TREE:
+			
+			tree->code = tree->left->code;
+		
+			code = tree->code;
+		
+			while (code->next)
+				code = code->next;
+			
+			generateNewLabelID();
+			Symbol *trueSymbol = insertGlobal(_labelID, UNKNOWN);
+			code->next = createCode(BRANCH, tree->left->symbol, NULL, trueSymbol);
+			code = code->next;
+			generateNewLabelID();
+			Symbol *falseSymbol = insertGlobal(_labelID, UNKNOWN);
+			code->next = createCode(JUMP, falseSymbol, NULL, NULL);
+			code = code->next;
+			code->next = createCode(LABEL, trueSymbol, NULL, NULL);
+			code = code->next;
+			
+			if (tree->right && tree->right->code) {
+				code->next = tree->right->code;
+				
+				while (code->next)
+					code = code->next;
+			}
+			
+			if (tree->opt) {
+				generateNewLabelID();
+				Symbol *afterSymbol = insertGlobal(_labelID, UNKNOWN);
+				code->next = createCode(JUMP, afterSymbol, NULL, NULL);
+				code = code->next;
+				code->next = createCode(LABEL, falseSymbol, NULL, NULL);
+				code = code->next;
+				code->next = tree->opt->code;
+				
+				while (code->next)
+					code = code->next;
+					
+				code->next = createCode(LABEL, afterSymbol, NULL, NULL);				
+			} else {
+				code->next = createCode(LABEL, falseSymbol, NULL, NULL);
+			}
+			
 			break;
 		case WHILE_TREE:
-			break;*/
+			
+			generateNewLabelID();
+			Symbol *conditionSymbol = insertGlobal(_labelID, UNKNOWN);
+			tree->code = createCode(JUMP, conditionSymbol, NULL, NULL);
+			code = tree->code;
+			generateNewLabelID();
+			Symbol *trueSym = insertGlobal(_labelID, UNKNOWN);
+			code->next = createCode(LABEL, trueSym, NULL, NULL);
+			code = code->next;
+			
+			if (tree->right && tree->right->code) {
+				code->next = tree->right->code;
+				
+				while (code->next)
+					code = code->next;
+			}
+			
+			if (tree->opt) {
+				code->next = tree->opt->code;
+				
+				while (code->next)
+					code = code->next;
+			}
+			
+			code->next = createCode(LABEL, conditionSymbol, NULL, NULL);
+			code = code->next;
+			code->next = tree->left->code;
+			
+			while (code->next)
+				code = code->next;
+			
+			code->next = createCode(BRANCH, tree->left->symbol, NULL, trueSym);
+			
+			break;
 		case RETURN_TREE:
 			if (!tree->left) {
 				tree->code = createCode(RETURN_OP, NULL, NULL, tree->symbol);
@@ -2705,22 +2793,720 @@ void writeCode(Code *code) {
 			
 			break;
 		case NOT_OP:
+			printf("\n");
+			
+			printf("\tlw\t$t0, %s\n", code->source1->location);
+			printf("\txori\t$t0, $t0, 1\n");
+			printf("\tsw\t$t0, %s\n", code->destination->location);
+
 			break;
 		case EQUAL_OP:
+			printf("\n");
+			
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s == %s\n", code->source1->identifier, code->source2->identifier);
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# %s == '\\n'\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# %s == '\\0'\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s == '%c'\n", code->source1->identifier, code->source2->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %s == %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+						
+				}
+				
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else if (code->source1->reference) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t$t0, 0($t0)\n");
+				} else {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' == %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' == %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' == %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d == %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+				
+				} else {
+					
+					printf("\t# %s == %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tseq\t$t0, $t0, $t1\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+			
 			break;
 		case NOT_EQUAL_OP:
+			printf("\n");
+						
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s != %s\n", code->source1->identifier, code->source2->identifier);
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# %s != '\\n'\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# %s != '\\0'\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s != '%c'\n", code->source1->identifier, code->source2->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %s != %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+						
+				}
+				
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else if (code->source1->reference) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t$t0, 0($t0)\n");
+				} else {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' != %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' != %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' != %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d != %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+				
+				} else {
+					
+					printf("\t# %s != %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tsne\t$t0, $t0, $t1\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+
 			break;
 		case GREATER_THAN_OP:
+			printf("\n");
+						
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s > %s\n", code->source1->identifier, code->source2->identifier);
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# %s > '\\n'\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# %s > '\\0'\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s > '%c'\n", code->source1->identifier, code->source2->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %s > %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+						
+				}
+				
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else if (code->source1->reference) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t$t0, 0($t0)\n");
+				} else {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' > %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' > %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' > %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d > %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+				
+				} else {
+					
+					printf("\t# %s > %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tsgt\t$t0, $t1, $t0\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+		
 			break;
 		case GREATER_EQUAL_OP:
+			printf("\n");
+						
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s >= %s\n", code->source1->identifier, code->source2->identifier);
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# %s >= '\\n'\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# %s >= '\\0'\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s >= '%c'\n", code->source1->identifier, code->source2->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %s >= %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+						
+				}
+				
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else if (code->source1->reference) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t$t0, 0($t0)\n");
+				} else {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' >= %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' >= %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' >= %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d >= %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+				
+				} else {
+					
+					printf("\t# %s >= %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tsge\t$t0, $t1, $t0\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+		
 			break;
 		case LESS_THAN_OP:
+			printf("\n");
+						
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s < %s\n", code->source1->identifier, code->source2->identifier);
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# %s < '\\n'\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# %s < '\\0'\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s < '%c'\n", code->source1->identifier, code->source2->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %s < %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+						
+				}
+				
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else if (code->source1->reference) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t$t0, 0($t0)\n");
+				} else {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' < %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' < %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' < %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d < %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+				
+				} else {
+					
+					printf("\t# %s < %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tslt\t$t0, $t1, $t0\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+		
 			break;
 		case LESS_EQUAL_OP:
+			printf("\n");
+						
+			if (code->source1->location) {
+
+				if (code->source2->location) {
+					
+					printf("\t# %s <= %s\n", code->source1->identifier, code->source2->identifier);
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+						
+				} else {
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\t# %s <= '\\n'\n", code->source1->identifier);
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\t# %s <= '\\0'\n", code->source1->identifier);
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# %s <= '%c'\n", code->source1->identifier, code->source2->value.charVal);
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\t# %s <= %d\n", code->source1->identifier, code->source2->value.intVal);
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+						
+				}
+				
+				if (code->source1->type == CHAR_TYPE) {
+					printf("\tlb\t$t0, %s\n", code->source1->location);
+				} else if (code->source1->reference) {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t$t0, 0($t0)\n");
+				} else {
+					printf("\tlw\t$t0, %s\n", code->source1->location);
+				}
+					
+			} else {
+				
+				if (code->source2->location) {
+					
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\t# '\\n' <= %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\t# '\\0' <= %s\n", code->source2->identifier);
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\t# '%c' <= %s\n", code->source1->value.charVal, code->source2->identifier);
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\t# %d <= %s\n", code->source1->value.intVal, code->source2->identifier);
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						printf("\tlb\t$t1, %s\n", code->source2->location);
+					} else if (code->source2->reference) {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, 0($t0)\n");
+					} else {
+						printf("\tlw\t$t1, %s\n", code->source2->location);
+					}
+				
+				} else {
+					
+					printf("\t# %s <= %s\n", code->source1->identifier, code->source2->identifier);
+				
+					if (code->source1->type == CHAR_TYPE) {
+						if (code->source1->value.charVal == '\n') {
+							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source1->value.charVal == '\0') {
+							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					}
+					
+					if (code->source2->type == CHAR_TYPE) {
+						if (code->source2->value.charVal == '\n') {
+							printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						} else if (code->source2->value.charVal == '\0') {
+							printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						} else {
+							printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						}
+					} else {
+						printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					}
+
+				}
+			}
+			
+			printf("\tsle\t$t0, $t1, $t0\n");
+		
+			if (code->destination->type == CHAR_TYPE)
+				printf("\tsb\t$t0, %s\n", code->destination->location);
+			else
+				printf("\tsw\t$t0, %s\n", code->destination->location);
+		
 			break;
 		case AND_OP:
+			printf("\n");
+			
+			printf("\tlw\t$t0, %s\n", code->source1->location);
+			printf("\tlw\t$t1, %s\n", code->source2->location);
+			printf("\tand\t$t0, $t0, $t1\n");
+			printf("\tsw\t$t0, %s\n", code->destination->location);
+			
 			break;
 		case OR_OP:
+			printf("\n");
+			
+			printf("\tlw\t$t0, %s\n", code->source1->location);
+			printf("\tlw\t$t1, %s\n", code->source2->location);
+			printf("\tor\t$t0, $t0, $t1\n");
+			printf("\tsw\t$t0, %s\n", code->destination->location);
+			
 			break;
 		case RETRIEVE_OP:
 			printf("\n");
@@ -2734,29 +3520,24 @@ void writeCode(Code *code) {
 			}
 			
 			break;
-		/*case BRANCH_EQUAL:
-			break;
-		case BRANCH_NOT_EQUAL:
-			break;
-		case BRANCH_LESS:
-			break;
-		case BRANCH_LESS_EQUAL:
-			break;
-		case BRANCH_GREATER:
-			break;
-		case BRANCH_GREATER_EQUAL:
+		case BRANCH:
+			printf("\n");
+			printf("\tlw\t$t0, %s\n", code->source1->location);
+			printf("\tbgtz\t$t0, _%s\n", code->destination->identifier);
 			break;
 		case JUMP:
+			printf("\n");
+			printf("\tj\t_%s\n", code->source1->identifier);
 			break;
-		case WHILE_OP: // if an infinite loop occurs in the runtime environment
-		 				// and there is no output around to display it
-						// does it still affect your resources?
-			break;*/
+		case LABEL:
+			printf("\n");
+			printf("_%s:\n", code->source1->identifier);
+			break;
 		case RETURN_OP:
 			printf("\n");
 			if (!code->source1) {
 				printf("\t# return\n");
-				printf("\tj\t_%sReturn\n", code->destination->identifier);
+				printf("\tj\t__%sReturn\n", code->destination->identifier);
 			} else {
 				
 				if (code->source1->location) {
@@ -2796,7 +3577,7 @@ void writeCode(Code *code) {
 				}
 				
 				printf("\tadd\t$v0, $t0, $0\n");
-				printf("\tj\t_%sReturn\n", code->destination->identifier);
+				printf("\tj\t__%sReturn\n", code->destination->identifier);
 			}
 			break;
 		case ARRAY_OP:
