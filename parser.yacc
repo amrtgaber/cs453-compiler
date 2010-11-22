@@ -37,7 +37,8 @@ void 	typeError(char *errorMessage),
 		insertStringLiteral(Symbol *stringLiteral),
 		popStringLiterals(StringLiteral *stringLiteral),
 		insertTempVariable(Symbol *tempVariable),
-		popTempVariables(TempVariable *tempVariable);
+		popTempVariables(TempVariable *tempVariable),
+		writeExpressionCode(char *mnemonic, char *operator, Code *code);
 int		allocateStackSpace(SyntaxTree *declaration, int offset);
 Symbol	*recallStringLiteral(char *string);
 Code	*constructCode(SyntaxTree *tree);
@@ -1979,6 +1980,15 @@ Code *constructCode(SyntaxTree *tree) {
 				while (code->next)
 					code = code->next;
 			
+				code->next = createCode(NOT_OP, tree->right->symbol, NULL, tree->right->symbol);
+				code = code->next;
+				generateNewLabelID();
+				Symbol *shortSymbol = insertGlobal(_labelID, UNKNOWN);
+				code->next = createCode(BRANCH, tree->right->symbol, NULL, shortSymbol);
+				code = code->next;
+				code->next = createCode(NOT_OP, tree->right->symbol, NULL, tree->right->symbol);
+				code = code->next;
+				
 				code->next = tree->left->code;
 				
 				if (tree->left->code) {
@@ -1989,8 +1999,17 @@ Code *constructCode(SyntaxTree *tree) {
 				}
 				
 				code->next = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = code->next; 
+				code->next = createCode(LABEL, shortSymbol, NULL, NULL);
 			} else if (tree->left->code) {
-				tree->code = tree->left->code;
+				tree->code = createCode(NOT_OP, tree->right->symbol, NULL, tree->right->symbol);
+				code = tree->code;
+				generateNewLabelID();
+				Symbol *shortSymbol = insertGlobal(_labelID, UNKNOWN);
+				code->next = createCode(BRANCH, tree->right->symbol, NULL, shortSymbol);
+				code = code->next;
+				code->next = createCode(NOT_OP, tree->right->symbol, NULL, tree->right->symbol);
+				code = code->next;
 				
 				code = tree->code;
 				
@@ -1998,8 +2017,20 @@ Code *constructCode(SyntaxTree *tree) {
 					code = code->next;
 				
 				code->next = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = code->next;
+				code->next = createCode(LABEL, shortSymbol, NULL, NULL);
 			} else {
-				tree->code = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				tree->code = createCode(NOT_OP, tree->right->symbol, NULL, tree->right->symbol);
+				code = tree->code;
+				generateNewLabelID();
+				Symbol *shortSymbol = insertGlobal(_labelID, UNKNOWN);
+				code->next = createCode(BRANCH, tree->right->symbol, NULL, shortSymbol);
+				code = code->next;
+				code->next = createCode(NOT_OP, tree->right->symbol, NULL, tree->right->symbol);
+				code = code->next;
+				code->next = createCode(AND_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = code->next; 
+				code->next = createCode(LABEL, shortSymbol, NULL, NULL);
 			}
 
 			break;
@@ -2013,6 +2044,13 @@ Code *constructCode(SyntaxTree *tree) {
 				while (code->next)
 					code = code->next;
 			
+				code->next = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = code->next;
+				generateNewLabelID();
+				Symbol *shortSymbol = insertGlobal(_labelID, UNKNOWN);
+				code->next = createCode(BRANCH, tree->right->symbol, NULL, shortSymbol);
+				code = code->next;
+			
 				code->next = tree->left->code;
 				
 				if (tree->left->code) {
@@ -2023,17 +2061,34 @@ Code *constructCode(SyntaxTree *tree) {
 				}
 				
 				code->next = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = code->next; 
+				code->next = createCode(LABEL, shortSymbol, NULL, NULL);
 			} else if (tree->left->code) {
-				tree->code = tree->left->code;
-				
+				tree->code = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
 				code = tree->code;
+				generateNewLabelID();
+				Symbol *shortSymbol = insertGlobal(_labelID, UNKNOWN);
+				code->next = createCode(BRANCH, tree->right->symbol, NULL, shortSymbol);
+				code = code->next;
+				
+				code->next = tree->left->code;
 				
 				while(code->next)
 					code = code->next;
 				
 				code->next = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = code->next;
+				code->next = createCode(LABEL, shortSymbol, NULL, NULL);
 			} else {
 				tree->code = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = tree->code;
+				generateNewLabelID();
+				Symbol *shortSymbol = insertGlobal(_labelID, UNKNOWN);
+				code->next = createCode(BRANCH, tree->right->symbol, NULL, shortSymbol);
+				code = code->next;
+				code->next = createCode(OR_OP, tree->left->symbol, tree->right->symbol, tree->symbol);
+				code = code->next;
+				code->next = createCode(LABEL, shortSymbol, NULL, NULL);
 			}
 
 			break;
@@ -2289,7 +2344,9 @@ void writeCode(Code *code) {
 	
 	switch (code->opcode) {
 		case ADD_OP:
-			printf("\n");
+			writeExpressionCode("add", "+", code);
+		
+			/*printf("\n");
 			
 			if (code->source1->location) {
 
@@ -2301,13 +2358,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
-						printf("\tlw\t$t1, %s\n", code->source2->location);
+						printf("\tlw\t$t1, %s\n", code->source2->location);						
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -2333,14 +2391,15 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
-					
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
+				
 			} else {
 				
 				if (code->source2->location) {
@@ -2365,13 +2424,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -2409,11 +2469,12 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 
 			break;
 		case SUB_OP:
-			printf("\n");
+			writeExpressionCode("sub", "-", code);
+			/*printf("\n");
 			
 			if (code->source1->location) {
 
@@ -2425,13 +2486,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -2457,13 +2519,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -2489,13 +2552,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -2533,11 +2597,12 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 			
 			break;
 		case MULT_OP:
-			printf("\n");
+			writeExpressionCode("mul", "*", code);
+			/*printf("\n");
 			
 			if (code->source1->location) {
 
@@ -2549,13 +2614,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -2581,13 +2647,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -2613,13 +2680,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -2657,11 +2725,12 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 			
 			break;
 		case DIV_OP:
-			printf("\n");
+			writeExpressionCode("div", "/", code);
+			/*printf("\n");
 			
 			if (code->source1->location) {
 
@@ -2673,13 +2742,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -2705,13 +2775,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -2737,13 +2808,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -2781,7 +2853,7 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 			
 			break;
 		case NEG_OP:
@@ -2795,13 +2867,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 					
@@ -2840,7 +2913,9 @@ void writeCode(Code *code) {
 
 			break;
 		case EQUAL_OP:
-			printf("\n");
+			writeExpressionCode("seq", "==", code);
+			
+			/*printf("\n");
 			
 			if (code->source1->location) {
 
@@ -2852,13 +2927,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -2884,13 +2960,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -2916,13 +2993,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -2960,11 +3038,13 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 			
 			break;
 		case NOT_EQUAL_OP:
-			printf("\n");
+			writeExpressionCode("sne", "!=", code);
+		
+			/*printf("\n");
 						
 			if (code->source1->location) {
 
@@ -2976,13 +3056,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -3008,13 +3089,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -3040,13 +3122,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -3084,11 +3167,12 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 
 			break;
 		case GREATER_THAN_OP:
-			printf("\n");
+			writeExpressionCode("sgt", ">", code);
+			/*printf("\n");
 						
 			if (code->source1->location) {
 
@@ -3100,13 +3184,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -3132,13 +3217,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -3164,13 +3250,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -3208,11 +3295,12 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 		
 			break;
 		case GREATER_EQUAL_OP:
-			printf("\n");
+			writeExpressionCode("sge", ">=", code);
+			/*printf("\n");
 						
 			if (code->source1->location) {
 
@@ -3224,13 +3312,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -3256,13 +3345,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -3288,13 +3378,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -3332,11 +3423,12 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 		
 			break;
 		case LESS_THAN_OP:
-			printf("\n");
+			writeExpressionCode("slt", "<", code);
+			/*printf("\n");
 						
 			if (code->source1->location) {
 
@@ -3348,13 +3440,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -3380,13 +3473,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -3412,13 +3506,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -3456,11 +3551,12 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 		
 			break;
 		case LESS_EQUAL_OP:
-			printf("\n");
+			writeExpressionCode("sle", "<=", code);
+			/*printf("\n");
 						
 			if (code->source1->location) {
 
@@ -3472,13 +3568,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 						
 				} else {
 					
@@ -3504,13 +3601,14 @@ void writeCode(Code *code) {
 					printf("\tlb\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
-					if (code->source1->type == CHAR_ARRAY)
-						printf("\tlb\t$t0, 0($t0)\n");
-					else
-						printf("\tlw\t$t0, 0($t0)\n");
 				} else {
 					printf("\tlw\t$t0, %s\n", code->source1->location);
 				}
+				
+				if (code->source1->type == CHAR_ARRAY)
+					printf("\tlb\t$t0, 0($t0)\n");
+				if (code->source1->type == INT_ARRAY)
+					printf("\tlw\t$t0, 0($t0)\n");
 					
 			} else {
 				
@@ -3536,13 +3634,14 @@ void writeCode(Code *code) {
 						printf("\tlb\t$t1, %s\n", code->source2->location);
 					} else if (code->source2->reference) {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
-						if (code->source2->type == CHAR_ARRAY)
-							printf("\tlb\t$t1, 0($t1)\n");
-						else
-							printf("\tlw\t$t1, 0($t1)\n");
 					} else {
 						printf("\tlw\t$t1, %s\n", code->source2->location);
 					}
+					
+					if (code->source2->type == CHAR_ARRAY)
+						printf("\tlb\t$t1, 0($t1)\n");
+					if (code->source2->type == INT_ARRAY)
+						printf("\tlw\t$t1, 0($t1)\n");
 				
 				} else {
 					
@@ -3580,7 +3679,7 @@ void writeCode(Code *code) {
 			if (code->destination->type == CHAR_TYPE)
 				printf("\tsb\t$t0, %s\n", code->destination->location);
 			else
-				printf("\tsw\t$t0, %s\n", code->destination->location);
+				printf("\tsw\t$t0, %s\n", code->destination->location);*/
 		
 			break;
 		case AND_OP:
@@ -3956,4 +4055,146 @@ void generateNewTempID() {
  */
 void generateNewLabelID() {
 	sprintf(_labelID, "_label%d", _labelNum++);
+}
+
+void writeExpressionCode(char *mnemonic, char *operator, Code *code) {
+	printf("\n");
+	
+	if (code->source1->location) {
+
+		if (code->source2->location) {
+			
+			printf("\t# %s %s %s\n", code->source1->identifier, operator, code->source2->identifier);
+			
+			if (code->source2->type == CHAR_TYPE) {
+				printf("\tlb\t$t1, ");
+			} else if (code->source2->reference) {
+				printf("\tlw\t$t1, ");
+			} else {
+				printf("\tlw\t$t1, ");
+			}
+			
+			if (_offset != 0 && strncmp(code->source2->location, "_", 1) != 0)
+				printf("%d + %s\n", _offset, code->source2->location);
+			else
+				printf("%s\n", code->source2->location);	
+			
+			if (code->source2->type == CHAR_ARRAY)
+				printf("\tlb\t$t1, 0($t1)\n");
+			if (code->source2->type == INT_ARRAY)
+				printf("\tlw\t$t1, 0($t1)\n");
+				
+		} else {
+			
+			if (code->source2->type == CHAR_TYPE) {
+				if (code->source2->value.charVal == '\n') {
+					printf("\t# %s %s '\\n'\n", code->source1->identifier, operator);
+					printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+				} else if (code->source2->value.charVal == '\0') {
+					printf("\t# %s %s '\\0'\n", code->source1->identifier, operator);
+					printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+				} else {
+					printf("\t# %s %s '%c'\n", code->source1->identifier, operator, code->source2->value.charVal);
+					printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+				}
+			} else {
+				printf("\t# %s %s %d\n", code->source1->identifier, operator, code->source2->value.intVal);
+				printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+			}
+				
+		}
+		
+		if (code->source1->type == CHAR_TYPE) {
+			printf("\tlb\t$t0, ");
+		} else if (code->source1->reference) {
+			printf("\tlw\t$t0, ");
+		} else {
+			printf("\tlw\t$t0, ");
+		}
+		
+		if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
+			printf("%d + %s\n", _offset, code->source1->location);
+		else
+			printf("%s\n", code->source1->location);
+		
+		if (code->source1->type == CHAR_ARRAY)
+			printf("\tlb\t$t0, 0($t0)\n");
+		if (code->source1->type == INT_ARRAY)
+			printf("\tlw\t$t0, 0($t0)\n");
+		
+	} else {
+		
+		if (code->source2->location) {
+			
+			if (code->source1->type == CHAR_TYPE) {
+				if (code->source1->value.charVal == '\n') {
+					printf("\t# '\\n' %s %s\n", operator, code->source2->identifier);
+					printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+				} else if (code->source1->value.charVal == '\0') {
+					printf("\t# '\\0' %s %s\n", operator, code->source2->identifier);
+					printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+				} else {
+					printf("\t# '%c' %s %s\n", code->source1->value.charVal, operator, code->source2->identifier);
+					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+				}
+			} else {
+				printf("\t# %d %s %s\n", code->source1->value.intVal, operator, code->source2->identifier);
+				printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+			}
+			
+			if (code->source2->type == CHAR_TYPE) {
+				printf("\tlb\t$t1, ");
+			} else if (code->source2->reference) {
+				printf("\tlw\t$t1, ");
+			} else {
+				printf("\tlw\t$t1, ");				
+			}
+			
+			if (_offset != 0 && strncmp(code->source2->location, "_", 1) != 0)
+				printf("%d + %s\n", _offset, code->source2->location);
+			else
+				printf("%s\n", code->source2->location);
+			
+			if (code->source2->type == CHAR_ARRAY)
+				printf("\tlb\t$t1, 0($t1)\n");
+			if (code->source2->type == INT_ARRAY)
+				printf("\tlw\t$t1, 0($t1)\n");
+		
+		} else {
+			
+			printf("\t# %s %s %s\n", code->source1->identifier, operator, code->source2->identifier);
+		
+			if (code->source1->type == CHAR_TYPE) {
+				if (code->source1->value.charVal == '\n') {
+					printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+				} else if (code->source1->value.charVal == '\0') {
+					printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+				} else {
+					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+				}
+			} else {
+				printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+			}
+			
+			if (code->source2->type == CHAR_TYPE) {
+				if (code->source2->value.charVal == '\n') {
+					printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+				} else if (code->source2->value.charVal == '\0') {
+					printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+				} else {
+					printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+				}
+			} else {
+				printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+			}
+
+		}
+	}
+	
+	printf("\t%s\t$t0, $t1, $t0\n", mnemonic);
+
+	if (code->destination->type == CHAR_TYPE)
+		printf("\tsb\t$t0, %s\n", code->destination->location);
+	else
+		printf("\tsw\t$t0, %s\n", code->destination->location);
 }

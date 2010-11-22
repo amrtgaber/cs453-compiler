@@ -1,0 +1,181 @@
+extern void print_int(int n);
+extern void print_string(char s[]);
+
+/* print_string wrapper */
+void ps(char string[]) {
+	print_string(string);
+}
+
+/* print_int wrapper */
+void pi(int n) {
+	print_int(n);
+}
+
+/* print newline wrapper */
+void pn(void) {
+	print_string("\n");
+}
+
+/* globals */
+int LEFT, RIGHT, ERASE, NOP, MARK, UNMARK, X;
+int head;
+char EPSILON, SPACE, DASH, charString[2];
+char currentSymbol;
+char tape[100];
+
+/* Function: printState
+ * Parameters: none
+ * Description: Prints the current configuration of the turing machine.
+ * Returns: none
+ * Preconditions: none
+ */
+void printState(void) {
+	int i;
+	char c;
+	
+	pn();
+	
+	if (currentSymbol == EPSILON) {
+		ps("Symbol: none\n");
+	} else {
+		ps("Symbol: ");
+		charString[0] = currentSymbol;
+		ps(charString);
+		pn();
+	}
+	
+	ps("Head: ");
+	for( i = 0; i < head; i = i + 1)
+		ps(" ");
+	
+	ps("|\n");
+	
+	ps("Tape: ");
+	ps(tape);
+	pn();
+}
+
+/* Function: readSymbol
+ * Parameters: none
+ * Description: Reads the symbol that the head is currently pointing at.
+ * Returns: The char that the head is looking at.
+ * Preconditions: none
+ */
+char readSymbol(void) {
+	return tape[head];
+}
+
+/* Function: transition
+ * Parameters: int motion, int action
+ * Description: Performs the given action on the current symbol then moves the
+ * 					head in the given direction.
+ * Returns: none
+ * Preconditions: none
+ */
+void transition(int motion, int action){
+	if (action == ERASE)
+		tape[head] = SPACE;
+	if (action == MARK)
+		tape[head] = tape[head] - 32; /* convert char to uppercase */
+	if (action == UNMARK)
+		tape[head] = tape[head] + 32; /* convert char to lowercase */
+	if (action == X)
+		tape[head] = DASH;
+	
+	if (motion == LEFT) {
+		if (head > 0)
+			head = head - 1;
+	} else {
+		head = head + 1;
+	}
+		
+}
+
+/* Function: setTape
+ * Parameters: char contents[]
+ * Description: Sets the current tape to the given character string.
+ * Returns: none
+ * Preconditions: contents MUST be null terminated.
+ */
+void setTape(char contents[]) {
+	int i;
+	
+	for( i = 0; contents[i] != '\0'; i = i + 1)
+		tape[i] = contents[i];
+	
+	tape[i] = '\0';
+}
+
+/* Function: main
+ * Parameters: none
+ * Description: This particular main function uses the turing machine functions
+ * 					to determine if a given string is in the language:
+ * 					{ w#w | Alphabet is [a-z]* }.
+ * Returns: Prints to screen if string is accepted or rejected.
+ * Preconditions: none
+ */
+void main(void) {
+	/* initializing globals */
+	LEFT = 0;
+	RIGHT = 1;
+	ERASE = 2;
+	NOP = 3;
+	MARK = 4;
+	UNMARK = 5;
+	X = 6;
+	EPSILON = '\0';
+	SPACE = ' ';
+	DASH = '-';
+	charString[1] = '\0';
+	head = 0;
+	currentSymbol = EPSILON;
+	setTape("abaabb#abaabb ");
+	
+	printState();
+	
+	while (readSymbol() != '#') {
+		currentSymbol = readSymbol();
+		printState();
+		transition(RIGHT, X);
+		
+		while (readSymbol() != '#')
+			transition(RIGHT, NOP);
+		
+		transition(RIGHT, NOP);
+		
+		while (readSymbol() == DASH)
+			transition(RIGHT, NOP);
+		
+		printState();
+		
+		if (readSymbol() != currentSymbol) {
+			ps("\nREJECT\n\n");
+			return;
+		}
+		
+		transition(LEFT, X);
+		
+		while (readSymbol() != '#')
+			transition(LEFT, NOP);
+		
+		while (readSymbol() != DASH)
+			transition(LEFT, NOP);
+			
+		transition(RIGHT, NOP);
+		
+		currentSymbol = EPSILON;
+	}
+	
+	transition(RIGHT, NOP);
+	
+	while (readSymbol() == DASH)
+		transition(RIGHT, NOP);
+	
+	printState();
+	
+	if (readSymbol() == SPACE)
+		ps("\nACCEPT\n\n");
+	else
+		ps("\nREJECT\n\n");
+	
+}

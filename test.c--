@@ -1,6 +1,179 @@
 extern void print_int(int n);
 extern void print_string(char s[]);
 
+void printX(int x), printA(int a), make10(int n), make5(int n),
+		takeIntArray(int n[]), takeCharArray(char c[]), onlyLocals(void),
+		onlyParameters(int param1, char param2, int param3[], char param4[]),
+		parametersAndLocals(char p1, int p2, char p3[], int p4[]),
+		noVariables(void), ps(char string[]), pi(int n), pn(void),
+		scale(int a[], int f);
+	
+int return5(void), index(int a[], int i);
+
+int x, a, int1, int2, int3, int4, intArray1[4], int5, intArray2[10], intArray3[100];
+char char1, char2, char3, charArray1[26], char4, char5, charArray2[255];
+
+void main(void) {
+	int localArray[4], local1, local2;
+	char charString[2];
+	charString[1] = '\0';
+	
+	local1 = 5;
+	local2 = -5;
+	
+	if (local2 == local1) {
+		ps("\nTest Program:\n");
+	} else {
+		ps("\nTEST PROGRAM:\n");
+	}
+	
+	ps("\nInitializing local int array...\n");
+	
+	for(local1 = 0; local1 < 4; local1 = local1 + 1) {
+		localArray[local1] = 5 * (local1 + 1);
+	}
+/*	localArray[0] = 5;
+	localArray[1] = 10;
+	localArray[2] = 15;
+	localArray[3] = 20;*/
+	ps("localArray[0] = ");
+	pi(localArray[0]);
+	pn();
+	ps("localArray[1] = ");
+	pi(localArray[1]);
+	pn();
+	ps("localArray[2] = ");
+	pi(localArray[2]);
+	pn();
+	ps("localArray[3] = ");
+	pi(localArray[3]);
+	pn();
+	
+	ps("\nInitializing global array...\n");
+	
+	local1 = 3;
+	while (local1 >= 0) {
+		intArray1[local1] = local1 + 1;
+		local1 = local1 - 1;
+	}
+/*	intArray1[0] = 1;
+	intArray1[1] = 2;
+	intArray1[2] = 3;
+	intArray1[3] = 4;*/
+	ps("intArray1[0] = ");
+	pi(intArray1[0]);
+	pn();
+	ps("intArray1[1] = ");
+	pi(intArray1[1]);
+	pn();
+	ps("intArray1[2] = ");
+	pi(intArray1[2]);
+	pn();
+	ps("intArray1[3] = ");
+	pi(intArray1[3]);
+	pn();
+
+	ps("\nInitializing some chars...\n");
+
+	char1 = '#';
+	charString[0] = char1;
+	ps("char1 = ");
+	ps(charString);
+	pn();
+	
+	char2 = '\n';
+	charString[0] = char2;
+	ps("char2 = ");
+	ps(charString);
+	pn();
+	
+	char3 = '\0';
+	charString[0] = char3;
+	ps("char3 = ");
+	ps(charString);
+	pn();
+	
+	ps("\nInitializing some ints...\n");
+	x = 5;
+	printX(x);
+	
+	a = 42;
+	printA(a);
+	
+	x = a;
+	printX(x);
+	printA(a);
+
+	pi(100);
+	pn();
+	
+	takeIntArray(intArray3);
+	takeCharArray(charArray2);
+	onlyLocals();
+	onlyParameters(int1, char1, intArray1, charArray1);
+	parametersAndLocals('a', 1, charArray1, intArray1);
+	noVariables();
+	
+	/* x = -25 */
+	ps("\nNow for an expr...\n");
+	
+	x = 10;
+	a = x / 2;
+	local1 = a / 2;
+	local2 = 3;
+	x = (2*x - x) / a / local1 * local2 - 38 + 10;
+	printX(x);
+	
+	/* x = 5 */
+	ps("\nNow for a function call...\n");
+	
+	x = return5();
+	printX(x);
+	
+	/* x = 120 */
+	ps("\nNow for a double call with simple addition...\n");
+	
+	x = 100 + return5() + return5() + 10;
+	printX(x);
+	
+	ps("\nLet's use functions to modify some arrays...\n");
+	
+	scale(localArray, 2);
+	ps("localArray[0] = ");
+	pi(localArray[0]);
+	pn();
+	ps("localArray[1] = ");
+	pi(localArray[1]);
+	pn();
+	ps("localArray[2] = ");
+	pi(localArray[2]);
+	pn();
+	ps("localArray[3] = ");
+	pi(localArray[3]);
+	pn();
+	
+	scale(intArray1, -1);
+	ps("intArray1[0] = ");
+	pi(intArray1[0]);
+	pn();
+	ps("intArray1[1] = ");
+	pi(intArray1[1]);
+	pn();
+	ps("intArray1[2] = ");
+	pi(intArray1[2]);
+	pn();
+	ps("intArray1[3] = ");
+	pi(intArray1[3]);
+	pn();
+	
+	/* x = 20 */
+	ps("\nLet's wrap an array indexing operation...\n");
+
+	x = index(localArray, 1);
+	printX(x);
+	
+}
+
 /* print_string wrapper */
 void ps(char string[]) {
 	print_string(string);
@@ -16,166 +189,56 @@ void pn(void) {
 	print_string("\n");
 }
 
-/* globals */
-int LEFT, RIGHT, ERASE, NOP, MARK, UNMARK, X;
-int head;
-char EPSILON, SPACE, DASH, charString[2];
-char currentSymbol;
-char tape[100];
+int index(int array[], int index) {
+	return array[index];
+}
 
-/* Function: printState
- * Parameters: none
- * Description: Prints the current configuration of the turing machine.
- * Returns: none
- * Preconditions: none
- */
-void printState(void) {
-	int i;
-	char c;
+/* scales only the first 4 values */
+void scale(int array[], int factor) {
+	array[0] = array[0] * factor;
+	array[1] = array[1] * factor;
+	array[2] = array[2] * factor;
+	array[3] = array[3] * factor;
+}
+
+int return5(void) {
+	return 5;
+}
+
+void noVariables(void) {
+
+}
+
+void parametersAndLocals(char p1, int p2, char p3[], int p4[]) {
+	int local1[2], local2[1];
+	char local3[5], local4[50];
+}
+
+void onlyLocals(void) {
+	int local1, local2;
+	char local3, local4;
+}
+
+void onlyParameters(int param1, char param2, int param3[], char param4[]) {
 	
+}
+
+void takeIntArray(int n[]) {
+	return;
+}
+
+void takeCharArray(char c[]) {
+	
+}
+
+void printX(int x) {
+	ps("x = ");
+	pi(x);
 	pn();
-	
-	if (currentSymbol == EPSILON) {
-		ps("Symbol: none\n");
-	} else {
-		ps("Symbol: ");
-		charString[0] = currentSymbol;
-		ps(charString);
-		pn();
-	}
-	
-	ps("Head: ");
-	for( i = 0; i < head; i = i + 1)
-		ps(" ");
-	
-	ps("|\n");
-	
-	ps("Tape: ");
-	ps(tape);
+}
+
+void printA(int a) {
+	ps("a = ");
+	pi(a);
 	pn();
-}
-
-/* Function: readSymbol
- * Parameters: none
- * Description: Reads the symbol that the head is currently pointing at.
- * Returns: The char that the head is looking at.
- * Preconditions: none
- */
-char readSymbol(void) {
-	return tape[head];
-}
-
-/* Function: transition
- * Parameters: int motion, int action
- * Description: Performs the given action on the current symbol then moves the
- * 					head in the given direction.
- * Returns: none
- * Preconditions: none
- */
-void transition(int motion, int action){
-	if (action == ERASE)
-		tape[head] = SPACE;
-	if (action == MARK)
-		tape[head] = tape[head] - 32; /* convert char to uppercase */
-	if (action == UNMARK)
-		tape[head] = tape[head] + 32; /* convert char to lowercase */
-	if (action == X)
-		tape[head] = DASH;
-	
-	if (motion == LEFT) {
-		if (head > 0)
-			head = head - 1;
-	} else {
-		head = head + 1;
-	}
-		
-}
-
-/* Function: setTape
- * Parameters: char contents[]
- * Description: Sets the current tape to the given character string.
- * Returns: none
- * Preconditions: contents MUST be null terminated.
- */
-void setTape(char contents[]) {
-	int i;
-	
-	for( i = 0; contents[i] != '\0'; i = i + 1)
-		tape[i] = contents[i];
-	
-	tape[i] = '\0';
-}
-
-/* Function: main
- * Parameters: none
- * Description: This particular main function uses the turing machine functions
- * 					to determine if a given string is in the language:
- * 					{ w#w | Alphabet is [a-z]* }.
- * Returns: Prints to screen if string is accepted or rejected.
- * Preconditions: none
- */
-void main(void) {
-	/* initializing globals */
-	LEFT = 0;
-	RIGHT = 1;
-	ERASE = 2;
-	NOP = 3;
-	MARK = 4;
-	UNMARK = 5;
-	X = 6;
-	EPSILON = '\0';
-	SPACE = ' ';
-	DASH = '-';
-	charString[1] = '\0';
-	head = 0;
-	currentSymbol = EPSILON;
-	setTape("abaabb#abaabb ");
-	
-	printState();
-	
-	while (readSymbol() != '#') {
-		currentSymbol = readSymbol();
-		printState();
-		transition(RIGHT, X);
-		
-		while (readSymbol() != '#')
-			transition(RIGHT, NOP);
-		
-		transition(RIGHT, NOP);
-		
-		while (readSymbol() == DASH)
-			transition(RIGHT, NOP);
-		
-		printState();
-		
-		if (readSymbol() != currentSymbol) {
-			ps("\nREJECT\n\n");
-			return;
-		}
-		
-		transition(LEFT, X);
-		
-		while (readSymbol() != '#')
-			transition(LEFT, NOP);
-		
-		while (readSymbol() != DASH)
-			transition(LEFT, NOP);
-			
-		transition(RIGHT, NOP);
-		
-		currentSymbol = EPSILON;
-	}
-	
-	transition(RIGHT, NOP);
-	
-	while (readSymbol() == DASH)
-		transition(RIGHT, NOP);
-	
-	printState();
-	
-	if (readSymbol() == SPACE)
-		ps("\nACCEPT\n\n");
-	else
-		ps("\nREJECT\n\n");
-	
 }
