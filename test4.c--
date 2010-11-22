@@ -1,0 +1,87 @@
+extern void print_int(int n);
+extern void print_string(char s[]);
+
+/* print_string wrapper */
+void ps(char string[]) {
+	print_string(string);
+}
+
+/* print_int wrapper */
+void pi(int n) {
+	print_int(n);
+}
+
+/* print newline wrapper */
+void pn(void) {
+	print_string("\n");
+}
+
+char CHARSTRING[2];
+
+char i(char a) {
+	return 1 + a;
+}
+
+char j(char a) {
+	return 1 + a;
+}
+
+char k(char a, char b, char c) {
+	CHARSTRING[1] = '\0';
+	
+	CHARSTRING[0]  = a;
+	ps(CHARSTRING);
+	pn();
+	pi(a);
+	pn();
+	CHARSTRING[0]  = b;
+	ps(CHARSTRING);
+	pn();
+	pi(b);
+	pn();
+	CHARSTRING[0]  = c;
+	ps(CHARSTRING);
+	pn();
+	pi(c);
+	pn();
+	return a + b + c;
+}
+
+int g(int n) {
+	return 1 + n;
+}
+
+int h(int n) {
+	return 1 + n;
+}
+
+int f(int n, int m, int p, int q) {
+	pi(n);
+	pn();
+	pi(m);
+	pn();
+	pi(p);
+	pn();
+	pi(q);
+	pn();
+	return n + m + p + q;
+}
+
+void main(void) {
+	int n;
+	char c;
+	
+	ps("int test...\n");
+	n = f(1 + 1 * 3 * 0 + g(-1), h(g(0 + 3 * 5 * 0)), g(h(g(0))), 4);
+	pi(n);
+	pn();
+	
+	ps("char test...\n");
+	c = k(i('a'), j(i('a')), i(j(i('a'))));
+	CHARSTRING[0] = c;
+	CHARSTRING[1] = '\0';
+	ps(CHARSTRING);
+	pn();
+	pi(c);
+	pn();
+}

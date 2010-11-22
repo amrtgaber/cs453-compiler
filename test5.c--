@@ -1,0 +1,56 @@
+extern void print_int(int n);
+extern void print_string(char s[]);
+
+/* print_string wrapper */
+void ps(char string[]) {
+	print_string(string);
+}
+
+/* print_int wrapper */
+void pi(int n) {
+	print_int(n);
+}
+
+/* print newline wrapper */
+void pn(void) {
+	print_string("\n");
+}
+
+void main(void) {
+	int zero, one, two , three;
+	zero = 0; one = 1; two = 2; three = 3;
+	
+	if (one > zero || (two/zero) > three) {
+		ps("WIN!");
+		pn();
+	} else {
+		ps("FAIL!");
+		pn();
+	}
+	
+	if (one + 1 > zero || (two/zero) > three) {
+		ps("WIN!");
+		pn();
+	} else {
+		ps("FAIL!");
+		pn();
+	}
+	
+	/* the next 2 are supposed to evaluate to false and thus print "WIN!" */
+	if (zero > one && (two/zero) > three) {
+		ps("FAIL!");
+		pn();
+	} else {
+		ps("WIN!");
+		pn();
+	}
+	
+	if (zero + 0 > one && (two/zero) > three) {
+		ps("FAIL!");
+		pn();
+	} else {
+		ps("WIN!");
+		pn();
+	}
+	
+}
