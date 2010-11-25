@@ -168,6 +168,8 @@ char *operatorAsString(Operator operation){
 			return "RETURN_TREE";
 		case SYMBOL:
 			return "SYMBOL";
+		case LITERAL:
+			return "LITERAL";
 		case ARRAY:
 			return "ARRAY INDEXING";
 		case PARAMETER:
