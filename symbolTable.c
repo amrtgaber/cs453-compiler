@@ -131,7 +131,7 @@ Symbol *insertGlobal(char *identifier, Type type) {
 		
 	if (identifier) {
 		if (!(toInsert->identifier = strdup(identifier)))
-			ERROR("", __LINE__, TRUE); 				// out of memory
+			ERROR("", __LINE__, TRUE); 				// out of memory	
 	} else {
 		toInsert->identifier = NULL;
 	}
@@ -245,6 +245,7 @@ void popSymbolTable() {
 			rear = front;
 		}
 		free(rear->identifier);
+		free(rear->location);
 		freeParameterList(rear->parameterListHead);
 		free(rear);
 	}

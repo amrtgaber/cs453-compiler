@@ -119,8 +119,10 @@ program:	  program declaration ';'
 declaration:  type varDcl multiVarDcl
 			{
 			  printf(".data\n\n");
-			  declareGlobalVariables(createTree(DECLARATION, NULL, $2, $3));
+			  SyntaxTree *declarations = createTree(DECLARATION, NULL, $2, $3);
+			  declareGlobalVariables(declarations);
 			  printf("\n");
+			  destroyTree(declarations);
 			}
 			| storeExtern type storeFID '(' insertFunc paramTypes ')'
 				multiProtDcl makeProt { _currFType = F_UNKNOWN; }
@@ -502,6 +504,8 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tjr\t$ra\n");
 
+			  destroyTree(function);
+			  destroyCode(code);
 			  popSymbolTable();
 			}
 			| storeVoid storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
@@ -605,6 +609,8 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
 			  printf("\tjr\t$ra\n");
 
+			  destroyTree(function);
+			  destroyCode(code);
 			  popSymbolTable();
 			}
 			;
@@ -1406,6 +1412,7 @@ void popStringLiterals(StringLiteral *stringLiteral) {
 	printf("\t.asciiz\t%s\n", stringLiteral->symbol->value.strVal);
 	
 	popStringLiterals(stringLiteral->next);
+	free(stringLiteral->symbol->value.strVal);
 	free(stringLiteral);
 }
 
