@@ -33,7 +33,7 @@ char s[100];
 
 void main(void) {
 	ps("Enter a number: ");
-	n = rn();
+	n = ri();
 	ps("The number you entered is ");
 	pi(n);
 	pn();

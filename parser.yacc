@@ -441,8 +441,8 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  _stackSize += allocateStackSpace(function, 0);
 
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
-			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
-			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
+			  printf("\tsw\t\t$ra, %d($sp)\n", _stackSize - 4);
+			  printf("\tsw\t\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$fp, $sp, %d\n", _stackSize);
 
 			  SyntaxTree *parameter = $5;
@@ -469,11 +469,11 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 					}
 
 					if (parameter->symbol->type == CHAR_TYPE) {
-						printf("\tlb\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
-						printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
+						printf("\tlb\t\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
+						printf("\tsb\t\t$t0, %d($sp)\n", _stackSize - i);
 					} else {
-						printf("\tlw\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
-						printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
+						printf("\tlw\t\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
+						printf("\tsw\t\t$t0, %d($sp)\n", _stackSize - i);
 					}
 					
 					if (parameter->symbol->type == CHAR_ARRAY || parameter->symbol->type == INT_ARRAY)
@@ -486,7 +486,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  	  printf("\t# initializing local variables\n");
 
 				  for( ; i <= _stackSize; i += 4)
-					  printf("\tsw\t$0, %d($sp)\n", _stackSize - i);
+					  printf("\tsw\t\t$0, %d($sp)\n", _stackSize - i);
 			  }
 
 			  Code *code = constructCode(function);
@@ -499,10 +499,10 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  #endif
 
 			  printf("\n__%sReturn:\n", _currFID);
-			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
-			  printf("\tlw\t$ra, %d($sp)\n", _stackSize - 4);
+			  printf("\tlw\t\t$fp, %d($sp)\n", _stackSize - 8);
+			  printf("\tlw\t\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
-			  printf("\tjr\t$ra\n");
+			  printf("\tjr\t\t$ra\n");
 
 			  destroyTree(function);
 			  destroyCode(code);
@@ -546,8 +546,8 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  _stackSize += allocateStackSpace(function, 0);
 
 			  printf("\tsubu\t$sp, $sp, %d\n", _stackSize);
-			  printf("\tsw\t$ra, %d($sp)\n", _stackSize - 4);
-			  printf("\tsw\t$fp, %d($sp)\n", _stackSize - 8);
+			  printf("\tsw\t\t$ra, %d($sp)\n", _stackSize - 4);
+			  printf("\tsw\t\t$fp, %d($sp)\n", _stackSize - 8);
 			  printf("\taddu\t$fp, $sp, %d\n", _stackSize);
 			  
 			  SyntaxTree *parameter = $5;
@@ -574,11 +574,11 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 					}
 				
 					if (parameter->symbol->type == CHAR_TYPE) {
-						printf("\tlb\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
-						printf("\tsb\t$t0, %d($sp)\n", _stackSize - i);
+						printf("\tlb\t\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
+						printf("\tsb\t\t$t0, %d($sp)\n", _stackSize - i);
 					} else {
-						printf("\tlw\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
-						printf("\tsw\t$t0, %d($sp)\n", _stackSize - i);
+						printf("\tlw\t\t$t0, %d($fp)\t\t# storing parameter %s\n", j, parameterName->symbol->identifier);
+						printf("\tsw\t\t$t0, %d($sp)\n", _stackSize - i);
 					}
 					
 					if (parameter->symbol->type == CHAR_ARRAY || parameter->symbol->type == INT_ARRAY)
@@ -591,7 +591,7 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  	  printf("\t# initializing local variables\n");
 			
 				  for( ; i <= _stackSize; i += 4)
-					  printf("\tsw\t$0, %d($sp)\n", _stackSize - i);
+					  printf("\tsw\t\t$0, %d($sp)\n", _stackSize - i);
 			  }
 
 			  Code *code = constructCode(function);
@@ -604,10 +604,10 @@ function:	  type storeFID '(' insertFunc paramTypes ')' '{' multiTypeDcl
 			  #endif
 			
 			  printf("\n__%sReturn:\n", _currFID);
-			  printf("\tlw\t$fp, %d($sp)\n", _stackSize - 8);
-			  printf("\tlw\t$ra, %d($sp)\n", _stackSize - 4);
+			  printf("\tlw\t\t$fp, %d($sp)\n", _stackSize - 8);
+			  printf("\tlw\t\t$ra, %d($sp)\n", _stackSize - 4);
 			  printf("\taddu\t$sp, $sp, %d\n", _stackSize);
-			  printf("\tjr\t$ra\n");
+			  printf("\tjr\t\t$ra\n");
 
 			  destroyTree(function);
 			  destroyCode(code);
@@ -1290,33 +1290,33 @@ main() {
 	
 	printf("\n.text\n\n");
 	printf("_print_int:\n");
-	printf("\tli\t$v0, 1\n");
-	printf("\tlw\t$a0, 0($sp)\n");
+	printf("\tli\t\t$v0, 1\n");
+	printf("\tlw\t\t$a0, 0($sp)\n");
 	printf("\tsyscall\n");
-	printf("\tjr\t$ra\n");
+	printf("\tjr\t\t$ra\n");
 	
 	printf("\n_print_string:\n");
-	printf("\tli\t$v0, 4\n");
-	printf("\tlw\t$a0, 0($sp)\n");
+	printf("\tli\t\t$v0, 4\n");
+	printf("\tlw\t\t$a0, 0($sp)\n");
 	printf("\tsyscall\n");
-	printf("\tjr\t$ra\n");
+	printf("\tjr\t\t$ra\n");
 	
 	printf("_read_int:\n");
-	printf("\tli\t$v0, 5\n");
+	printf("\tli\t\t$v0, 5\n");
 	printf("\tsyscall\n");
-	printf("\tjr\t$ra\n");
+	printf("\tjr\t\t$ra\n");
 	
 	printf("\n_read_string:\n");
-	printf("\tli\t$v0, 8\n");
+	printf("\tli\t\t$v0, 8\n");
 	printf("\tsyscall\n");
-	printf("\tlw\t$t0, 0($sp)\n");
+	printf("\tlw\t\t$t0, 0($sp)\n");
 	printf("__read_string_copy:\n");
-	printf("\tlb\t$t1, 0($a0)\n");
-	printf("\tsb\t$t1, 0($t0)\n");
+	printf("\tlb\t\t$t1, 0($a0)\n");
+	printf("\tsb\t\t$t1, 0($t0)\n");
 	printf("\taddi\t$t0, $t0, 1\n");
 	printf("\taddi\t$a0, $a0, 1\n");
 	printf("\tbgtz\t$t1, __read_string_copy\n");
-	printf("\tjr\t$ra\n");
+	printf("\tjr\t\t$ra\n");
 	
 	if (_generateCode)
 		return 0;					// success
@@ -2329,44 +2329,44 @@ void writeCode(Code *code) {
 				printf("\t# -%s\n", code->source1->identifier);
 					
 				if (code->source1->type == CHAR_TYPE) {
-					printf("\tlb\t$t0, %s\n", code->source1->location);
+					printf("\tlb\t\t$t0, %s\n", code->source1->location);
 				} else if (code->source1->reference) {
-					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t\t$t0, %s\n", code->source1->location);
 				} else {
-					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t\t$t0, %s\n", code->source1->location);
 				}
 				
 				if (code->source1->type == CHAR_ARRAY)
-					printf("\tlb\t$t0, 0($t0)\n");
+					printf("\tlb\t\t$t0, 0($t0)\n");
 				if (code->source1->type == INT_ARRAY)
-					printf("\tlw\t$t0, 0($t0)\n");
+					printf("\tlw\t\t$t0, 0($t0)\n");
 					
 			} else {
 					
 				if (code->source1->type == CHAR_TYPE) {
 					if (code->source1->value.charVal == '\n') {
 						printf("\t# -'\\n'\n");
-						printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						printf("\tli\t\t$t0, 10		# 10 is ascii value for '\\n'\n");
 					} else if (code->source1->value.charVal == '\0') {
 						printf("\t# -'\\0'\n");
-						printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						printf("\tli\t\t$t0, 0		# 0 is ascii value for '\\0'\n");
 					} else {
 						printf("\t# -'%c'\n", code->source1->value.charVal);
-						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						printf("\tli\t\t$t0, '%c'\n", code->source1->value.charVal);
 					}
 				} else {
 					printf("\t# -%d\n", code->source1->value.intVal);
-					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					printf("\tli\t\t$t0, %d\n", code->source1->value.intVal);
 				}
 				
 			}
 			
-			printf("\tneg\t$t0, $t0\n");
+			printf("\tneg\t\t$t0, $t0\n");
 		
 			if (code->destination->type == CHAR_TYPE)
-				printf("\tsb\t$t0, ");
+				printf("\tsb\t\t$t0, ");
 			else
-				printf("\tsw\t$t0, ");
+				printf("\tsw\t\t$t0, ");
 			
 			if (_offset != 0 && strncmp(code->destination->location, "_", 1) != 0)
 				printf("%d + %s\n", _offset, code->destination->location);
@@ -2377,9 +2377,9 @@ void writeCode(Code *code) {
 		case NOT_OP:
 			printf("\n");
 			
-			printf("\tlw\t$t0, %s\n", code->source1->location);
+			printf("\tlw\t\t$t0, %s\n", code->source1->location);
 			printf("\txori\t$t0, $t0, 1\n");
-			printf("\tsw\t$t0, %s\n", code->destination->location);
+			printf("\tsw\t\t$t0, %s\n", code->destination->location);
 
 			break;
 		case EQUAL_OP:
@@ -2403,19 +2403,19 @@ void writeCode(Code *code) {
 		case AND_OP:
 			printf("\n");
 			
-			printf("\tlw\t$t0, %s\n", code->source1->location);
-			printf("\tlw\t$t1, %s\n", code->source2->location);
-			printf("\tand\t$t0, $t0, $t1\n");
-			printf("\tsw\t$t0, %s\n", code->destination->location);
+			printf("\tlw\t\t$t0, %s\n", code->source1->location);
+			printf("\tlw\t\t$t1, %s\n", code->source2->location);
+			printf("\tand\t\t$t0, $t0, $t1\n");
+			printf("\tsw\t\t$t0, %s\n", code->destination->location);
 			
 			break;
 		case OR_OP:
 			printf("\n");
 			
-			printf("\tlw\t$t0, %s\n", code->source1->location);
-			printf("\tlw\t$t1, %s\n", code->source2->location);
-			printf("\tor\t$t0, $t0, $t1\n");
-			printf("\tsw\t$t0, %s\n", code->destination->location);
+			printf("\tlw\t\t$t0, %s\n", code->source1->location);
+			printf("\tlw\t\t$t1, %s\n", code->source2->location);
+			printf("\tor\t\t$t0, $t0, $t1\n");
+			printf("\tsw\t\t$t0, %s\n", code->destination->location);
 			
 			break;
 		case RETRIEVE_OP:
@@ -2424,9 +2424,9 @@ void writeCode(Code *code) {
 			printf("\t# retrieve return value from %s\n", code->source1->identifier);
 			
 			if (code->destination->type == CHAR_TYPE) {
-				printf("\tsb\t$v0, ");
+				printf("\tsb\t\t$v0, ");
 			} else {
-				printf("\tsw\t$v0, ");
+				printf("\tsw\t\t$v0, ");
 			}
 			
 			if (_offset != 0 && strncmp(code->destination->location, "_", 1) != 0)
@@ -2437,12 +2437,12 @@ void writeCode(Code *code) {
 			break;
 		case BRANCH:
 			printf("\n");
-			printf("\tlw\t$t0, %s\n", code->source1->location);
+			printf("\tlw\t\t$t0, %s\n", code->source1->location);
 			printf("\tbgtz\t$t0, _%s\n", code->destination->identifier);
 			break;
 		case JUMP:
 			printf("\n");
-			printf("\tj\t_%s\n", code->source1->identifier);
+			printf("\tj\t\t_%s\n", code->source1->identifier);
 			break;
 		case LABEL:
 			printf("\n");
@@ -2452,7 +2452,7 @@ void writeCode(Code *code) {
 			printf("\n");
 			if (!code->source1) {
 				printf("\t# return\n");
-				printf("\tj\t__%sReturn\n", code->destination->identifier);
+				printf("\tj\t\t__%sReturn\n", code->destination->identifier);
 			} else {
 				
 				if (code->source1->location) {
@@ -2460,15 +2460,15 @@ void writeCode(Code *code) {
 					printf("\t# return %s\n", code->source1->identifier);
 
 					if (code->source1->type == CHAR_ARRAY) {
-						printf("\tlw\t$t0, %s\n", code->source1->location);
-						printf("\tlb\t$t0, 0($t0)\n");
+						printf("\tlw\t\t$t0, %s\n", code->source1->location);
+						printf("\tlb\t\t$t0, 0($t0)\n");
 					} else if (code->source1->type == INT_ARRAY) {
-						printf("\tlw\t$t0, %s\n", code->source1->location);
-						printf("\tlw\t$t0, 0($t0)\n");
+						printf("\tlw\t\t$t0, %s\n", code->source1->location);
+						printf("\tlw\t\t$t0, 0($t0)\n");
 					} else if (code->source1->type == CHAR_TYPE) {
-						printf("\tlb\t$t0, %s\n", code->source1->location);
+						printf("\tlb\t\t$t0, %s\n", code->source1->location);
 					} else {
-						printf("\tlw\t$t0, %s\n", code->source1->location);
+						printf("\tlw\t\t$t0, %s\n", code->source1->location);
 					}
 
 				} else {
@@ -2476,23 +2476,23 @@ void writeCode(Code *code) {
 					if (code->source1->type == CHAR_TYPE) {
 						if (code->source1->value.charVal == '\n') {
 							printf("\t# return '\\n'\n");
-							printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+							printf("\tli\t\t$t0, 10		# 10 is ascii value for '\\n'\n");
 						} else if (code->source1->value.charVal == '\0') {
 							printf("\t# return '\\0'\n");
-							printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+							printf("\tli\t\t$t0, 0		# 0 is ascii value for '\\0'\n");
 						} else {
 							printf("\t# return '%c'\n", code->source1->value.charVal);
-							printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+							printf("\tli\t\t$t0, '%c'\n", code->source1->value.charVal);
 						}
 					} else {
 						printf("\t# return %d\n", code->source1->value.intVal);
-						printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+						printf("\tli\t\t$t0, %d\n", code->source1->value.intVal);
 					}
 
 				}
 				
-				printf("\tadd\t$v0, $t0, $0\n");
-				printf("\tj\t__%sReturn\n", code->destination->identifier);
+				printf("\tadd\t\t$v0, $t0, $0\n");
+				printf("\tj\t\t__%sReturn\n", code->destination->identifier);
 			}
 			break;
 		case ARRAY_OP:
@@ -2503,15 +2503,15 @@ void writeCode(Code *code) {
 				printf("\t# %s[%s]\n", code->source1->identifier, code->source2->identifier);
 				
 				if (code->source2->type == CHAR_ARRAY) {
-					printf("\tlw\t$t1, %s\n", code->source2->location);
-					printf("\tlb\t$t1, 0($t1)\n");
+					printf("\tlw\t\t$t1, %s\n", code->source2->location);
+					printf("\tlb\t\t$t1, 0($t1)\n");
 				} else if (code->source2->type == INT_ARRAY) {
-					printf("\tlw\t$t1, %s\n", code->source2->location);
-					printf("\tlw\t$t1, 0($t1)\n");
+					printf("\tlw\t\t$t1, %s\n", code->source2->location);
+					printf("\tlw\t\t$t1, 0($t1)\n");
 				} else if (code->source2->type == CHAR_TYPE) {
-					printf("\tlb\t$t1, %s\n", code->source2->location);
+					printf("\tlb\t\t$t1, %s\n", code->source2->location);
 				} else {
-					printf("\tlw\t$t1, %s\n", code->source2->location);
+					printf("\tlw\t\t$t1, %s\n", code->source2->location);
 				}
 					
 			} else {
@@ -2519,33 +2519,33 @@ void writeCode(Code *code) {
 				if (code->source2->type == CHAR_TYPE) {
 					if (code->source2->value.charVal == '\n') {
 						printf("\t# %s['\\n']\n", code->source1->identifier);
-						printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+						printf("\tli\t\t$t1, 10		# 10 is ascii value for '\\n'\n");
 					} else if (code->source2->value.charVal == '\0') {
 						printf("\t# %s[\\0']\n", code->source1->identifier);
-						printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+						printf("\tli\t\t$t1, 0		# 0 is ascii value for '\\0'\n");
 					} else {
 						printf("\t# %s['%c']\n", code->source1->identifier, code->source2->value.charVal);
-						printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+						printf("\tli\t\t$t1, '%c'\n", code->source2->value.charVal);
 					}
 				} else {
 					printf("\t# %s[%d]\n", code->source1->identifier, code->source2->value.intVal);
-					printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+					printf("\tli\t\t$t1, %d\n", code->source2->value.intVal);
 				}
 				
 			}
 			
 			if (code->destination->type == INT_ARRAY)
-				printf("\tsll\t$t1, $t1, 2\t\t# index * 4 (size of int)\n");
+				printf("\tsll\t\t$t1, $t1, 2\t\t# index * 4 (size of int)\n");
 			
 			if (code->source1->reference) {
-				printf("\tlw\t$t0, %s\n", code->source1->location);
+				printf("\tlw\t\t$t0, %s\n", code->source1->location);
 				code->destination->reference = TRUE;
 			} else {
-				printf("\tla\t$t0, %s\n", code->source1->location);
+				printf("\tla\t\t$t0, %s\n", code->source1->location);
 			}
 				
-			printf("\tadd\t$t0, $t0, $t1\n");
-			printf("\tsw\t$t0, ");
+			printf("\tadd\t\t$t0, $t0, $t1\n");
+			printf("\tsw\t\t$t0, ");
 			
 			if (_offset != 0 && strncmp(code->destination->location, "_", 1) != 0)
 				printf("%d + %s\n", _offset, code->destination->location);
@@ -2561,15 +2561,15 @@ void writeCode(Code *code) {
 				printf("\t# %s = %s\n", code->destination->identifier, code->source1->identifier);
 
 				if (code->source1->type == CHAR_ARRAY) {
-					printf("\tlw\t$t0, %s\n", code->source1->location);
-					printf("\tlb\t$t0, 0($t0)\n");
+					printf("\tlw\t\t$t0, %s\n", code->source1->location);
+					printf("\tlb\t\t$t0, 0($t0)\n");
 				} else if (code->source1->type == INT_ARRAY) {
-					printf("\tlw\t$t0, %s\n", code->source1->location);
-					printf("\tlw\t$t0, 0($t0)\n");
+					printf("\tlw\t\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t\t$t0, 0($t0)\n");
 				} else if (code->source1->type == CHAR_TYPE) {
-					printf("\tlb\t$t0, %s\n", code->source1->location);
+					printf("\tlb\t\t$t0, %s\n", code->source1->location);
 				} else {
-					printf("\tlw\t$t0, %s\n", code->source1->location);
+					printf("\tlw\t\t$t0, %s\n", code->source1->location);
 				}
 					
 			} else {
@@ -2577,29 +2577,29 @@ void writeCode(Code *code) {
 				if (code->source1->type == CHAR_TYPE) {
 					if (code->source1->value.charVal == '\n') {
 						printf("\t# %s = '\\n'\n", code->destination->identifier);
-						printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+						printf("\tli\t\t$t0, 10		# 10 is ascii value for '\\n'\n");
 					} else if (code->source1->value.charVal == '\0') {
 						printf("\t# %s = '\\0'\n", code->destination->identifier);
-						printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+						printf("\tli\t\t$t0, 0		# 0 is ascii value for '\\0'\n");
 					} else {
 						printf("\t# %s = '%c'\n", code->destination->identifier, code->source1->value.charVal);
-						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+						printf("\tli\t\t$t0, '%c'\n", code->source1->value.charVal);
 					}
 				} else {
 					printf("\t# %s = %d\n", code->destination->identifier, code->source1->value.intVal);
-					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+					printf("\tli\t\t$t0, %d\n", code->source1->value.intVal);
 				}
 				
 			}
 			
 			if (code->destination->type == CHAR_ARRAY)
-				printf("\tlw\t$t1, ");
+				printf("\tlw\t\t$t1, ");
 			else if (code->destination->type == INT_ARRAY)
-				printf("\tlw\t$t1, ");
+				printf("\tlw\t\t$t1, ");
 			else if (code->destination->type == CHAR_TYPE)
-				printf("\tsb\t$t0, ");
+				printf("\tsb\t\t$t0, ");
 			else
-				printf("\tsw\t$t0, ");
+				printf("\tsw\t\t$t0, ");
 			
 			if (_offset != 0 && strncmp(code->destination->location, "_", 1) != 0)
 				printf("%d + %s\n", _offset, code->destination->location);
@@ -2607,10 +2607,10 @@ void writeCode(Code *code) {
 				printf("%s\n", code->destination->location);
 				
 			if (code->destination->type == CHAR_ARRAY)
-				printf("\tsb\t$t0, 0($t1)\n");	
+				printf("\tsb\t\t$t0, 0($t1)\n");	
 				
 			if (code->destination->type == INT_ARRAY)
-				printf("\tsw\t$t0, 0($t1)\n");
+				printf("\tsw\t\t$t0, 0($t1)\n");
 				
 			break;
 		case ENTER:
@@ -2618,9 +2618,9 @@ void writeCode(Code *code) {
 			printf("\t# calling %s\n", code->source1->identifier);
 			
 			if (strcmp(code->source1->identifier, "main") == 0)
-				printf("\tjal\tmain\n", code->source1->identifier);
+				printf("\tjal\t\tmain\n", code->source1->identifier);
 			else
-				printf("\tjal\t_%s\n", code->source1->identifier);
+				printf("\tjal\t\t_%s\n", code->source1->identifier);
 			
 			Parameter *currParam = code->source1->parameterListHead;
 			int bytesToPop = 0;
@@ -2648,77 +2648,77 @@ void writeCode(Code *code) {
 				if (code->source1->type == CHAR_ARRAY) {
 					if (code->source1->reference) {
 						if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-							printf("\tlw\t$t0, %d + %s\n", _offset, code->source1->location);
+							printf("\tlw\t\t$t0, %d + %s\n", _offset, code->source1->location);
 						else
-							printf("\tlw\t$t0, %s\n", code->source1->location);
+							printf("\tlw\t\t$t0, %s\n", code->source1->location);
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					} else if (strncmp(code->source1->identifier, "_temp", 5) == 0
 							&& !code->source1->value.strVal) {
 						// char array being indexed
 						if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-							printf("\tlw\t$t0, %d + %s\n", _offset, code->source1->location);
+							printf("\tlw\t\t$t0, %d + %s\n", _offset, code->source1->location);
 						else
-							printf("\tlw\t$t0, %s\n", code->source1->location);
-						printf("\tlb\t$t0, 0($t0)\n");
+							printf("\tlw\t\t$t0, %s\n", code->source1->location);
+						printf("\tlb\t\t$t0, 0($t0)\n");
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					} else {
 						// char array being passed whole
 						if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-							printf("\tla\t$t0, %d + %s\n", _offset, code->source1->location);
+							printf("\tla\t\t$t0, %d + %s\n", _offset, code->source1->location);
 						else
-							printf("\tla\t$t0, %s\n", code->source1->location);
+							printf("\tla\t\t$t0, %s\n", code->source1->location);
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					}
 				} else if (code->source1->type == INT_ARRAY) {
 					if (code->source1->reference) {
 						if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-							printf("\tlw\t$t0, %d + %s\n", _offset, code->source1->location);
+							printf("\tlw\t\t$t0, %d + %s\n", _offset, code->source1->location);
 						else
-							printf("\tlw\t$t0, %s\n", code->source1->location);
+							printf("\tlw\t\t$t0, %s\n", code->source1->location);
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					} else if (strncmp(code->source1->identifier, "_temp", 5) == 0) {
 						// int array being indexed
 						if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-							printf("\tlw\t$t0, %d + %s\n", _offset, code->source1->location);
+							printf("\tlw\t\t$t0, %d + %s\n", _offset, code->source1->location);
 						else
-							printf("\tlw\t$t0, %s\n", code->source1->location);
-						printf("\tlw\t$t0, 0($t0)\n");
+							printf("\tlw\t\t$t0, %s\n", code->source1->location);
+						printf("\tlw\t\t$t0, 0($t0)\n");
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					} else {
 						// int array being passed whole
 						if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-							printf("\tla\t$t0, %d + %s\n", _offset, code->source1->location);
+							printf("\tla\t\t$t0, %d + %s\n", _offset, code->source1->location);
 						else
-							printf("\tla\t$t0, %s\n", code->source1->location);
+							printf("\tla\t\t$t0, %s\n", code->source1->location);
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					}
 				} else if (code->source1->type == CHAR_TYPE) {
 					if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-						printf("\tlb\t$t0, %d + %s\n", _offset, code->source1->location);
+						printf("\tlb\t\t$t0, %d + %s\n", _offset, code->source1->location);
 					else
-						printf("\tlb\t$t0, %s\n", code->source1->location);
+						printf("\tlb\t\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tsw\t$t0, 0($sp)\n");
+					printf("\tsw\t\t$t0, 0($sp)\n");
 				} else if (code->source1->type == INT_TYPE) {
 					if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-						printf("\tlw\t$t0, %d + %s\n", _offset, code->source1->location);
+						printf("\tlw\t\t$t0, %d + %s\n", _offset, code->source1->location);
 					else
-						printf("\tlw\t$t0, %s\n", code->source1->location);
+						printf("\tlw\t\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tsw\t$t0, 0($sp)\n");
+					printf("\tsw\t\t$t0, 0($sp)\n");
 				} else {
 					if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
-						printf("\tla\t$t0, %d + %s\n", _offset, code->source1->location);
+						printf("\tla\t\t$t0, %d + %s\n", _offset, code->source1->location);
 					else
-						printf("\tla\t$t0, %s\n", code->source1->location);
+						printf("\tla\t\t$t0, %s\n", code->source1->location);
 					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tsw\t$t0, 0($sp)\n");
+					printf("\tsw\t\t$t0, 0($sp)\n");
 				}
 				
 			} else {
@@ -2727,25 +2727,25 @@ void writeCode(Code *code) {
 					if (code->source1->value.charVal == '\n') {
 						printf("\t# pushing parameter '\\n'\n", code->source1->value.charVal);
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tli\t$t0, 10\n", code->source1->value.charVal);
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tli\t\t$t0, 10\n", code->source1->value.charVal);
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					} else if (code->source1->value.charVal == '\0') {
 						printf("\t# pushing parameter '\\0'\n", code->source1->value.charVal);
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tli\t$t0, 0\n", code->source1->value.charVal);
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tli\t\t$t0, 0\n", code->source1->value.charVal);
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					} else {
 						printf("\t# pushing parameter '%c'\n", code->source1->value.charVal);
 						printf("\tsubu\t$sp, $sp, 4\n");
-						printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
-						printf("\tsw\t$t0, 0($sp)\n");
+						printf("\tli\t\t$t0, '%c'\n", code->source1->value.charVal);
+						printf("\tsw\t\t$t0, 0($sp)\n");
 					}
 					
 				} else {
 					printf("\t# pushing parameter %d\n", code->source1->value.intVal);
 					printf("\tsubu\t$sp, $sp, 4\n");
-					printf("\tli\t$t0, %d\n", code->source1->value.intVal);
-					printf("\tsw\t$t0, 0($sp)\n");
+					printf("\tli\t\t$t0, %d\n", code->source1->value.intVal);
+					printf("\tsw\t\t$t0, 0($sp)\n");
 				}
 				
 			}
@@ -2771,11 +2771,11 @@ void writeExpressionCode(char *mnemonic, char *operator, Code *code) {
 			printf("\t# %s %s %s\n", code->source2->identifier, operator, code->source1->identifier);
 			
 			if (code->source2->type == CHAR_TYPE) {
-				printf("\tlb\t$t1, ");
+				printf("\tlb\t\t$t1, ");
 			} else if (code->source2->reference) {
-				printf("\tlw\t$t1, ");
+				printf("\tlw\t\t$t1, ");
 			} else {
-				printf("\tlw\t$t1, ");
+				printf("\tlw\t\t$t1, ");
 			}
 			
 			if (_offset != 0 && strncmp(code->source2->location, "_", 1) != 0)
@@ -2784,36 +2784,36 @@ void writeExpressionCode(char *mnemonic, char *operator, Code *code) {
 				printf("%s\n", code->source2->location);
 			
 			if (code->source2->type == CHAR_ARRAY)
-				printf("\tlb\t$t1, 0($t1)\n");
+				printf("\tlb\t\t$t1, 0($t1)\n");
 			if (code->source2->type == INT_ARRAY)
-				printf("\tlw\t$t1, 0($t1)\n");
+				printf("\tlw\t\t$t1, 0($t1)\n");
 				
 		} else {
 			
 			if (code->source2->type == CHAR_TYPE) {
 				if (code->source2->value.charVal == '\n') {
 					printf("\t# '\\n' %s %s\n", operator, code->source1->identifier);
-					printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+					printf("\tli\t\t$t1, 10		# 10 is ascii value for '\\n'\n");
 				} else if (code->source2->value.charVal == '\0') {
 					printf("\t# '\\0' %s %s\n", operator, code->source1->identifier);
-					printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+					printf("\tli\t\t$t1, 0		# 0 is ascii value for '\\0'\n");
 				} else {
 					printf("\t# '%c' %s %s\n", code->source2->value.charVal, operator, code->source1->identifier);
-					printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+					printf("\tli\t\t$t1, '%c'\n", code->source2->value.charVal);
 				}
 			} else {
 				printf("\t# %d %s %s\n", code->source2->value.intVal, operator, code->source1->identifier);
-				printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+				printf("\tli\t\t$t1, %d\n", code->source2->value.intVal);
 			}
 				
 		}
 		
 		if (code->source1->type == CHAR_TYPE) {
-			printf("\tlb\t$t0, ");
+			printf("\tlb\t\t$t0, ");
 		} else if (code->source1->reference) {
-			printf("\tlw\t$t0, ");
+			printf("\tlw\t\t$t0, ");
 		} else {
-			printf("\tlw\t$t0, ");
+			printf("\tlw\t\t$t0, ");
 		}
 		
 		if (_offset != 0 && strncmp(code->source1->location, "_", 1) != 0)
@@ -2822,9 +2822,9 @@ void writeExpressionCode(char *mnemonic, char *operator, Code *code) {
 			printf("%s\n", code->source1->location);
 		
 		if (code->source1->type == CHAR_ARRAY)
-			printf("\tlb\t$t0, 0($t0)\n");
+			printf("\tlb\t\t$t0, 0($t0)\n");
 		if (code->source1->type == INT_ARRAY)
-			printf("\tlw\t$t0, 0($t0)\n");
+			printf("\tlw\t\t$t0, 0($t0)\n");
 		
 	} else {
 		
@@ -2833,25 +2833,25 @@ void writeExpressionCode(char *mnemonic, char *operator, Code *code) {
 			if (code->source1->type == CHAR_TYPE) {
 				if (code->source1->value.charVal == '\n') {
 					printf("\t# %s %s '\\n'\n", code->source2->identifier, operator);
-					printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+					printf("\tli\t\t$t0, 10		# 10 is ascii value for '\\n'\n");
 				} else if (code->source1->value.charVal == '\0') {
 					printf("\t# %s %s '\\0'\n", code->source2->identifier, operator);
-					printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+					printf("\tli\t\t$t0, 0		# 0 is ascii value for '\\0'\n");
 				} else {
 					printf("\t# %s %s '%c'\n", code->source2->identifier, operator, code->source1->value.charVal);
-					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+					printf("\tli\t\t$t0, '%c'\n", code->source1->value.charVal);
 				}
 			} else {
 				printf("\t# %s %s %d\n", code->source2->identifier, operator, code->source1->value.intVal);
-				printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+				printf("\tli\t\t$t0, %d\n", code->source1->value.intVal);
 			}
 			
 			if (code->source2->type == CHAR_TYPE) {
-				printf("\tlb\t$t1, ");
+				printf("\tlb\t\t$t1, ");
 			} else if (code->source2->reference) {
-				printf("\tlw\t$t1, ");
+				printf("\tlw\t\t$t1, ");
 			} else {
-				printf("\tlw\t$t1, ");				
+				printf("\tlw\t\t$t1, ");				
 			}
 			
 			if (_offset != 0 && strncmp(code->source2->location, "_", 1) != 0)
@@ -2860,9 +2860,9 @@ void writeExpressionCode(char *mnemonic, char *operator, Code *code) {
 				printf("%s\n", code->source2->location);
 			
 			if (code->source2->type == CHAR_ARRAY)
-				printf("\tlb\t$t1, 0($t1)\n");
+				printf("\tlb\t\t$t1, 0($t1)\n");
 			if (code->source2->type == INT_ARRAY)
-				printf("\tlw\t$t1, 0($t1)\n");
+				printf("\tlw\t\t$t1, 0($t1)\n");
 		
 		} else {
 			
@@ -2870,37 +2870,37 @@ void writeExpressionCode(char *mnemonic, char *operator, Code *code) {
 		
 			if (code->source1->type == CHAR_TYPE) {
 				if (code->source1->value.charVal == '\n') {
-					printf("\tli\t$t0, 10		# 10 is ascii value for '\\n'\n");
+					printf("\tli\t\t$t0, 10		# 10 is ascii value for '\\n'\n");
 				} else if (code->source1->value.charVal == '\0') {
-					printf("\tli\t$t0, 0		# 0 is ascii value for '\\0'\n");
+					printf("\tli\t\t$t0, 0		# 0 is ascii value for '\\0'\n");
 				} else {
-					printf("\tli\t$t0, '%c'\n", code->source1->value.charVal);
+					printf("\tli\t\t$t0, '%c'\n", code->source1->value.charVal);
 				}
 			} else {
-				printf("\tli\t$t0, %d\n", code->source1->value.intVal);
+				printf("\tli\t\t$t0, %d\n", code->source1->value.intVal);
 			}
 			
 			if (code->source2->type == CHAR_TYPE) {
 				if (code->source2->value.charVal == '\n') {
-					printf("\tli\t$t1, 10		# 10 is ascii value for '\\n'\n");
+					printf("\tli\t\t$t1, 10		# 10 is ascii value for '\\n'\n");
 				} else if (code->source2->value.charVal == '\0') {
-					printf("\tli\t$t1, 0		# 0 is ascii value for '\\0'\n");
+					printf("\tli\t\t$t1, 0		# 0 is ascii value for '\\0'\n");
 				} else {
-					printf("\tli\t$t1, '%c'\n", code->source2->value.charVal);
+					printf("\tli\t\t$t1, '%c'\n", code->source2->value.charVal);
 				}
 			} else {
-				printf("\tli\t$t1, %d\n", code->source2->value.intVal);
+				printf("\tli\t\t$t1, %d\n", code->source2->value.intVal);
 			}
 
 		}
 	}
 	
-	printf("\t%s\t$t0, $t1, $t0\n", mnemonic);
+	printf("\t%s\t\t$t0, $t1, $t0\n", mnemonic);
 
 	if (code->destination->type == CHAR_TYPE)
-		printf("\tsb\t$t0, ");
+		printf("\tsb\t\t$t0, ");
 	else
-		printf("\tsw\t$t0, ");
+		printf("\tsw\t\t$t0, ");
 		
 	if (_offset != 0 && strncmp(code->destination->location, "_", 1) != 0)
 		printf("%d + %s\n", _offset, code->destination->location);
