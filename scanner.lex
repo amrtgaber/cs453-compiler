@@ -1,7 +1,7 @@
 /* File: scanner.lex
  * Author: Amr Gaber
  * Created: 24/9/2010
- * Last Modified: 5/11/2010
+ * Last Modified: 27/11/2010
  * Purpose: Tokenizer for parser.yacc. Used with the makefile to construct
  * 				the C-- compiler.
  */
@@ -21,7 +21,7 @@ identifier		[a-zA-Z][a-zA-Z0-9_]*
 intCon			[0-9]+
 charCon			'[\x20-\x26\x28-\x5B\x5D-\x7E]'|'\\n'|'\\0'
 strCon			\"[\x20\x21\x23-\x7E]*\"
-comment			\x2F\x2A[\x00-\x7E]*?\x2A\x2F
+lineComment		\/\/[^\n]*
 wspace			[ \t\n]
 catchAll		[\x00-\x7E]
 
@@ -72,6 +72,7 @@ catchAll		[\x00-\x7E]
 "<"				return(yytext[0]);
 ">"				return(yytext[0]);
 {wspace}		;
+{lineComment}	;
 {identifier}	{ yylval.string = strdup(yytext); } return(ID);
 {intCon}		{ yylval.integer = atoi(yytext); } return(INTCON);
 {charCon}		{ 

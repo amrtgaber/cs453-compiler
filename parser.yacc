@@ -1,7 +1,7 @@
 /* File: parser.yacc 
  * Author: Amr Gaber
  * Created: 24/9/2010
- * Last Modified: 6/11/2010
+ * Last Modified: 27/11/2010
  * Purpose: Parser for the C-- compiler. Used with scanner.lex and makefile to
  * 				construct the C-- compiler.
  */
@@ -1301,6 +1301,23 @@ main() {
 	printf("\tsyscall\n");
 	printf("\tjr\t$ra\n");
 	
+	printf("_read_int:\n");
+	printf("\tli\t$v0, 5\n");
+	printf("\tsyscall\n");
+	printf("\tjr\t$ra\n");
+	
+	printf("\n_read_string:\n");
+	printf("\tli\t$v0, 8\n");
+	printf("\tsyscall\n");
+	printf("\tlw\t$t0, 0($sp)\n");
+	printf("__read_string_copy:\n");
+	printf("\tlb\t$t1, 0($a0)\n");
+	printf("\tsb\t$t1, 0($t0)\n");
+	printf("\taddi\t$t0, $t0, 1\n");
+	printf("\taddi\t$a0, $a0, 1\n");
+	printf("\tbgtz\t$t1, __read_string_copy\n");
+	printf("\tjr\t$ra\n");
+	
 	if (_generateCode)
 		return 0;					// success
 	return 1;						// failure
@@ -1533,7 +1550,7 @@ int allocateStackSpace(SyntaxTree *declaration, int offset) {
  * Preconditions: none
  */
 Code *constructCode(SyntaxTree *tree) {
-	if (!tree)
+	if (!tree || !_generateCode)
 		return NULL;
 	
 	constructCode(tree->left);
@@ -2288,7 +2305,7 @@ Code *constructCode(SyntaxTree *tree) {
  * Preconditions: none
  */
 void writeCode(Code *code) {
-	if (!code)
+	if (!code || !_generateCode)
 		return;
 	
 	switch (code->opcode) {
