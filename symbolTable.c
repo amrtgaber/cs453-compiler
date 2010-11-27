@@ -1,7 +1,7 @@
 /* File: symbalTable.c 
  * Author: Amr Gaber
  * Created: 19/10/2010
- * Last Modified: 6/11/2010
+ * Last Modified: 27/11/2010
  * Purpose: Symbol table for use with the C-- compiler.
  */
 

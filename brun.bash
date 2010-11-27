@@ -3,4 +3,6 @@
 make clean
 make
 ./compile < test.c-- > test.s
-spim -f test.s
+if [ $? -eq 0 ]; then
+	spim -f test.s
+fi
