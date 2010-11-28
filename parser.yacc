@@ -1301,7 +1301,7 @@ main() {
 	printf("\tsyscall\n");
 	printf("\tjr\t\t$ra\n");
 	
-	printf("_read_int:\n");
+	printf("\n_read_int:\n");
 	printf("\tli\t\t$v0, 5\n");
 	printf("\tsyscall\n");
 	printf("\tjr\t\t$ra\n");

@@ -29,7 +29,7 @@ void rs(char s[]) {
 }
 
 int n;
-char s[100];
+char s[255];
 
 void main(void) {
 	ps("Enter a number: ");
